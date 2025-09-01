@@ -5,4 +5,4 @@ from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
 router.register(r'trades', TradeViewSet, basename="trade")
 
-urlpatterns = [path("healthz/", healthz), path("api/", include(router.urls))]
+urlpatterns = [path("healthz/", healthz), path("api/", include(router.urls)), path("", healthz)]
