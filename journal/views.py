@@ -3,11 +3,69 @@ from django.http import JsonResponse
 from rest_framework import viewsets, permissions
 from .models import Trade
 from .serializers import TradeSerializer
+from .forms import TradeForm
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
 
 # Create your views here.
 
 def healthz(_request):
     return JsonResponse({"status": "ok"})
+
+def home(request):
+    return render(request, "home.html")
+
+
+
+@login_required
+def trades_list(request):
+    trades = Trade.objects.filter(owner=request.user).order_by("-timestamp")
+    return render(request, "trades/list.html", {"trades": trades})
+
+@login_required
+def trades_create(request):
+    if request.method == "POST":
+        form = TradeForm(request.POST)
+        if form.is_valid():
+            trade = form.save(commit=False)
+            trade.owner = request.user
+            trade.save()
+            return redirect("trades_list")
+    else:
+        form = TradeForm()
+    return render(request, "trades/create.html", {"form": form})
+
+
+@login_required
+def trades_edit(request, pk):
+    trade = get_object_or_404(Trade, pk=pk, owner=request.user)
+    if request.method == "POST":
+        form = TradeForm(request.POST, instance=trade)
+        if form.is_valid():
+            form.save()
+            return redirect("trades_list")
+    else:
+        form = TradeForm(instance=trade)
+    return render(request, "trades/edit.html", {"form": form, "trade": trade})
+
+
+@login_required
+def dashboard(request):
+    # Minimal skeleton: a couple of counts for now
+    trades = Trade.objects.filter(owner=request.user)
+    context = {
+        "trade_count": trades.count(),
+        "open_count": trades.filter(exit_timestamp__isnull=True).count(),
+        "closed_count": trades.filter(exit_timestamp__isnull=False).count(),
+        # later: totals, PnL chart data, recent trades, etc.
+    }
+    return render(request, "dashboard.html", context)
+
+@login_required
+def profile(request):
+    # Skeleton profile page — later we can add edit form / avatar / token, etc.
+    return render(request, "profile.html", {"user_obj": request.user})
+
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):

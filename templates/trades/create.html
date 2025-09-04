@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>New Trade</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn" href="{% url 'trades_list' %}">Cancel</a>
+  </form>
+{% endblock %}

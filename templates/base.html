@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Trading Journal</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body { font-family: systen-ui, sans-serif; margin: 2rem;}
+            nav a { margin-right: 1rem; }
+            table { border-collapse: collapse; width: 100%}
+            th, td { border-bottom: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+            .btn {padding: .4rem .7rem; border: 1px solid #ccc; background:#f7f7f7; border-radius:6px; text-decoration:none; }
+            .btn-primary { background:#1f6feb; color:#fff; border-color:#1f6feb; }
+        </style>        
+    </head>
+    <body>
+    <nav>
+    <a href="/">Home</a>
+    <a href="/trades/">Trades</a>
+    <a class="btn btn-primary" href="/trades/new/">New Trade</a>
+    |
+    {% if user.is_authenticated %}
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        <a href="{% url 'profile' %}">Profile</a>
+        |
+        Logged in as {{ user.username }}
+        <form method="post" action="{% url 'logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn">Logout</button>
+        </form>
+    {% else %}
+        <a href="{% url 'login' %}">Login</a>
+    {% endif %}
+    </nav>
+        <hr>
+        {% if messages %}
+        <ul>
+        {% for m in messages %}<li>{{ m }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </body>
+</html>

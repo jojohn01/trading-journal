@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Dashboard</h2>
+  <p>Total trades: {{ trade_count }}</p>
+  <p>Open trades: {{ open_count }}</p>
+  <p>Closed trades: {{ closed_count }}</p>
+
+  <p>
+    <a class="btn btn-primary" href="{% url 'trades_create' %}">New Trade</a>
+    <a class="btn" href="{% url 'trades_list' %}">View All Trades</a>
+  </p>
+
+  <!-- Later: chart of PnL, recent trades table, filters, etc. -->
+{% endblock %}

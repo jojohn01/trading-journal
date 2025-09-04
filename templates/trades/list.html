@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Your Trades</h2>
+  {% if trades %}
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th>
+          <th>Entry</th><th>Exit</th><th>PnL</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in trades %}
+        <tr>
+          <td>{{ t.timestamp|date:"Y-m-d H:i" }}</td>
+          <td>{{ t.symbol }}</td>
+          <td>{{ t.get_side_display }}</td>
+          <td>{{ t.quantity }}</td>
+          <td>{{ t.price }}</td>
+          <td>{% if t.exit_price %}{{ t.exit_price }} @ {{ t.exit_time|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
+          <td>{% if t.pnl is not None %}{{ t.pnl }}{% else %}—{% endif %}</td>
+          <td><a class="btn" href="{% url 'trades_edit' t.pk %}">Edit</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No trades yet. <a href="{% url 'trades_create' %}">Create your first trade</a>.</p>
+  {% endif %}
+{% endblock %}
