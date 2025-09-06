@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.db.models import Q
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.utils import timezone
 
 # Create your models here.
 class Trade(models.Model):
@@ -12,10 +13,11 @@ class Trade(models.Model):
     symbol = models.CharField(max_length=10)
     side = models.CharField(max_length=4, choices=[("BUY", "Buy"), ("SELL", "Sell")])
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    entry_time = models.DateTimeField(default=timezone.now)
     price = models.DecimalField(max_digits=10, decimal_places=4)
-    timestamp = models.DateTimeField(auto_now_add=True)
     exit_price = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
-    exit_timestamp = models.DateTimeField(null=True, blank=True)
+    exit_time = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True)
 
     def __str__(self):
@@ -35,11 +37,11 @@ class Trade(models.Model):
 
     def clean(self):
         super().clean()
-        if (self.exit_price is None) ^ (self.exit_timestamp is None):
+        if (self.exit_price is None) ^ (self.exit_time is None):
             raise ValidationError("Exit price and exit time must be set together (both or neither).")
-        # If both set, exit_timestamp cannot be before entry timestamp
-        if self.exit_timestamp and self.timestamp and self.exit_timestamp < self.timestamp:
-            raise ValidationError({"exit_timestamp": "Exit time cannot be earlier than entry time."})
+        # If both set, exit_time cannot be before entry_time
+        if self.exit_time and self.entry_time and self.exit_time < self.entry_time:
+            raise ValidationError({"exit_time": "Exit time cannot be earlier than entry time."})
         # Quantity/price must be positive
         if self.quantity is not None and self.quantity <= 0:
             raise ValidationError({"quantity": "Quantity must be greater than 0."})
@@ -49,14 +51,14 @@ class Trade(models.Model):
             raise ValidationError({"exit_price": "Exit price must be greater than 0."})
 
     class Meta:
-        ordering = ['-timestamp']
+        ordering = ['-entry_time']
         constraints = [
         models.CheckConstraint(check=Q(quantity__gt=0), name="trade_quantity_gt_0"),
         models.CheckConstraint(check=Q(price__gt=0), name="trade_entry_price_gt_0"),
         models.CheckConstraint(
             check=(
-                (Q(exit_price__isnull=True) & Q(exit_timestamp__isnull=True)) |
-                (Q(exit_price__isnull=False) & Q(exit_timestamp__isnull=False))
+                (Q(exit_price__isnull=True) & Q(exit_time__isnull=True)) |
+                (Q(exit_price__isnull=False) & Q(exit_time__isnull=False))
             ),
             name="trade_exit_fields_both_or_neither",
         ),

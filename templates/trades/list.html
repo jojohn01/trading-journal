@@ -12,7 +12,7 @@
       <tbody>
         {% for t in trades %}
         <tr>
-          <td>{{ t.timestamp|date:"Y-m-d H:i" }}</td>
+          <td>{{ t.entry_time|date:"Y-m-d H:i" }}</td>
           <td>{{ t.symbol }}</td>
           <td>{{ t.get_side_display }}</td>
           <td>{{ t.quantity }}</td>

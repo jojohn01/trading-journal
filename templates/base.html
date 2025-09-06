@@ -5,12 +5,51 @@
         <title>Trading Journal</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body { font-family: systen-ui, sans-serif; margin: 2rem;}
-            nav a { margin-right: 1rem; }
-            table { border-collapse: collapse; width: 100%}
-            th, td { border-bottom: 1px solid #ddd; padding: 0.5rem; text-align: left; }
-            .btn {padding: .4rem .7rem; border: 1px solid #ccc; background:#f7f7f7; border-radius:6px; text-decoration:none; }
-            .btn-primary { background:#1f6feb; color:#fff; border-color:#1f6feb; }
+            :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --accent: #1f6feb;
+            --border: #30363d;
+            --success-bg:#0f5132; --success-br:#198754; --success-tx:#cfead6;
+            --info-bg:#084298; --info-br:#0d6efd; --info-tx:#dbe7ff;
+            --warn-bg:#664d03; --warn-br:#ffc107; --warn-tx:#fff3cd;
+            --err-bg:#58151c; --err-br:#dc3545; --err-tx:#f8d7da;
+            }
+            * { box-sizing: border-box; }
+            body {
+            background: var(--bg); color: var(--text);
+            font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans";
+            margin: 2rem;
+            }
+            nav {
+            display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;
+            }
+            a { color: var(--accent); text-decoration:none; }
+            a:hover { text-decoration:underline; }
+            table { border-collapse: collapse; width: 100%; background: var(--panel); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+            th, td { border-bottom: 1px solid var(--border); padding: .6rem .8rem; text-align: left; }
+            th { color: var(--muted); font-weight:600; background:#11161d; }
+            .btn {
+            padding: .45rem .8rem; border:1px solid var(--border);
+            background: #1b222c; color: var(--text); border-radius:8px; text-decoration:none; display:inline-block;
+            }
+            .btn:hover { background:#222a36; }
+            .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+            .btn-primary:hover { filter: brightness(0.95); }
+            hr { border: none; border-top:1px solid var(--border); margin:1rem 0; }
+
+            /* Flash messages */
+            .flash-wrap { margin:.75rem 0; }
+            .flash {
+            padding:.6rem .8rem; border-radius:8px; margin:.5rem 0; border:1px solid var(--border); background: var(--panel);
+            }
+            .flash-success { background: var(--success-bg); border-color: var(--success-br); color: var(--success-tx); }
+            .flash-info    { background: var(--info-bg);    border-color: var(--info-br);    color: var(--info-tx); }
+            .flash-warning { background: var(--warn-bg);    border-color: var(--warn-br);    color: var(--warn-tx); }
+            .flash-error   { background: var(--err-bg);     border-color: var(--err-br);     color: var(--err-tx); }
+
         </style>        
     </head>
     <body>
@@ -34,9 +73,11 @@
     </nav>
         <hr>
         {% if messages %}
-        <ul>
-        {% for m in messages %}<li>{{ m }}</li>{% endfor %}
-        </ul>
+        <div class="flash-wrap">
+            {% for message in messages %}
+            <div class="flash flash-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
         {% endif %}
         {% block content %}{% endblock %}
     </body>

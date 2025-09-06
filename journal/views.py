@@ -6,6 +6,8 @@ from .serializers import TradeSerializer
 from .forms import TradeForm
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+
 
 # Create your views here.
 
@@ -19,7 +21,7 @@ def home(request):
 
 @login_required
 def trades_list(request):
-    trades = Trade.objects.filter(owner=request.user).order_by("-timestamp")
+    trades = Trade.objects.filter(owner=request.user).order_by("-entry_time")
     return render(request, "trades/list.html", {"trades": trades})
 
 @login_required
@@ -30,6 +32,7 @@ def trades_create(request):
             trade = form.save(commit=False)
             trade.owner = request.user
             trade.save()
+            messages.success(request, "Trade created successfully.")
             return redirect("trades_list")
     else:
         form = TradeForm()
@@ -43,6 +46,7 @@ def trades_edit(request, pk):
         form = TradeForm(request.POST, instance=trade)
         if form.is_valid():
             form.save()
+            messages.success(request, "Trade updated successfully.")
             return redirect("trades_list")
     else:
         form = TradeForm(instance=trade)
@@ -55,8 +59,8 @@ def dashboard(request):
     trades = Trade.objects.filter(owner=request.user)
     context = {
         "trade_count": trades.count(),
-        "open_count": trades.filter(exit_timestamp__isnull=True).count(),
-        "closed_count": trades.filter(exit_timestamp__isnull=False).count(),
+        "open_count": trades.filter(exit_time__isnull=True).count(),
+        "closed_count": trades.filter(exit_time__isnull=False).count(),
         # later: totals, PnL chart data, recent trades, etc.
     }
     return render(request, "dashboard.html", context)
@@ -75,15 +79,15 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 
 class TradeViewSet(viewsets.ModelViewSet):
     serializer_class = TradeSerializer
-    ordering_fields = ["timestamp", "price", "quantity"]
+    ordering_fields = ["entry_time", "price", "quantity"]
     search_fields = ["symbol", "notes"]
-    filterset_fields = ["side", "timestamp"]
+    filterset_fields = ["side", "entry_time"]
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
 
     
     def get_queryset(self):
         # Each user only sees their own trades
-        return Trade.objects.filter(owner=self.request.user).order_by("-timestamp")
+        return Trade.objects.filter(owner=self.request.user).order_by("-entry_time")
 
     def perform_create(self, serializer):
         # Auto-set the owner on create
