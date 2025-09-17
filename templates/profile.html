@@ -4,7 +4,12 @@
   <ul>
     <li>Username: {{ user_obj.username }}</li>
     <li>Email: {{ user_obj.email|default:"—" }}</li>
-    <!-- Later: change password link, API token, profile settings -->
   </ul>
-  <p><a class="btn" href="{% url 'password_change' %}">Change Password</a></p>
+  <hr>
+  <h3>Trade Defaults</h3>
+  <form method="post">
+    {% csrf_token %}
+    {{ settings_form.as_p }}
+    <button class="btn btn-primary" type="submit">Save</button>
+  </form>
 {% endblock %}

@@ -14,4 +14,5 @@ urlpatterns = [
     path("trades/<int:pk>/edit/", trades_edit, name="trades_edit"),
     path("healthz/", healthz),
     path("api/", include(router.urls)),
+    path("trades/<int:pk>/delete/", trades_delete, name="trades_delete"),
 ]

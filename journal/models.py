@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.utils import timezone
 
+
+
 # Create your models here.
 class Trade(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trades", null=True, blank=True)
@@ -25,7 +27,7 @@ class Trade(models.Model):
 
     @property
     def pnl(self):
-        if self.exit_price is None or self.exit_timestamp is None:
+        if self.exit_price is None or self.exit_time is None:
             return None
         q = Decimal(self.quantity)
         entry = Decimal(self.price)
@@ -63,3 +65,22 @@ class Trade(models.Model):
             name="trade_exit_fields_both_or_neither",
         ),
     ]
+
+    def save(self, *args, **kwargs):
+        if self.symbol:
+            self.symbol = self.symbol.upper().strip()
+        super().save(*args, **kwargs)
+
+class UserTradeSettings(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trade_settings")
+
+    # All optional — only applied if set
+    default_side = models.CharField(max_length=4, choices=[("BUY", "Buy"), ("SELL", "Sell")], blank=True)
+    default_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    default_notes = models.TextField(blank=True)
+    # add others as you like: default_symbol, default_price, etc.
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} settings"

@@ -20,6 +20,7 @@
           <td>{% if t.exit_price %}{{ t.exit_price }} @ {{ t.exit_time|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
           <td>{% if t.pnl is not None %}{{ t.pnl }}{% else %}—{% endif %}</td>
           <td><a class="btn" href="{% url 'trades_edit' t.pk %}">Edit</a></td>
+          <td><a class="btn" href="{% url 'trades_delete' t.pk %}">Delete</a></td>
         </tr>
         {% endfor %}
       </tbody>

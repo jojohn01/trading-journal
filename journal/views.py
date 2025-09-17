@@ -1,9 +1,9 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from rest_framework import viewsets, permissions
-from .models import Trade
+from .models import Trade, UserTradeSettings
 from .serializers import TradeSerializer
-from .forms import TradeForm
+from .forms import TradeForm, UserTradeSettingsForm
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -27,7 +27,7 @@ def trades_list(request):
 @login_required
 def trades_create(request):
     if request.method == "POST":
-        form = TradeForm(request.POST)
+        form = TradeForm(request.POST, user=request.user)
         if form.is_valid():
             trade = form.save(commit=False)
             trade.owner = request.user
@@ -54,6 +54,17 @@ def trades_edit(request, pk):
 
 
 @login_required
+def trades_delete(request, pk):
+    trade = get_object_or_404(Trade, pk=pk, owner=request.user)
+    if request.method == "POST":
+        trade.delete()
+        from django.contrib import messages
+        messages.warning(request, "Trade deleted.")
+        return redirect("trades_list")
+    return render(request, "trades/delete_confirm.html", {"trade": trade})
+
+
+@login_required
 def dashboard(request):
     # Minimal skeleton: a couple of counts for now
     trades = Trade.objects.filter(owner=request.user)
@@ -67,8 +78,16 @@ def dashboard(request):
 
 @login_required
 def profile(request):
-    # Skeleton profile page — later we can add edit form / avatar / token, etc.
-    return render(request, "profile.html", {"user_obj": request.user})
+    settings_obj, _ = UserTradeSettings.objects.get_or_create(user=request.user)
+    if request.method == "POST":
+        form = UserTradeSettingsForm(request.POST, instance=settings_obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile defaults saved.")
+            return redirect("profile")
+    else:
+        form = UserTradeSettingsForm(instance=settings_obj)
+    return render(request, "profile.html", {"user_obj": request.user, "settings_form": form})
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):

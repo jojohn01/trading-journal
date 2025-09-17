@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Delete Trade #{{ trade.id }}?</h2>
+  <p><strong>{{ trade.symbol }}</strong> {{ trade.side }} @ {{ trade.price }} ({{ trade.entry_time|date:"Y-m-d H:i" }})</p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn btn-primary" type="submit">Yes, delete</button>
+    <a class="btn" href="{% url 'trades_list' %}">Cancel</a>
+  </form>
+{% endblock %}
