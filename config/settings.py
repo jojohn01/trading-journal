@@ -50,6 +50,15 @@ INSTALLED_APPS = [
     'rest_framework',
     'journal',
     'django_filters',
+    "django.contrib.sites",
+
+    # Allauth
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    # "allauth.socialaccount.providers.google",  # ← add later when ready
+
+
 ]
 
 MIDDLEWARE = [
@@ -58,6 +67,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    "allauth.account.middleware.AccountMiddleware",
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "config.middleware.AuthMessageMiddleware",
@@ -149,4 +159,35 @@ REST_FRAMEWORK = {
 }
 
 
-LOGIN_REDIRECT_URL = "/dashboard/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
+
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+# Account behavior
+ACCOUNT_LOGIN_METHODS = {"username", "email"}  # user can login by email or username
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+
+ACCOUNT_RATE_LIMITS = {
+    "login_failed": "5/5m",   # 5 failed attempts per 5 minutes
+    # Optional extras you can set later:
+    # "login": "20/1h",        # total login attempts (success or fail)
+    # "signup": "5/1h",
+    # "email_verification": "5/1h",
+}
+
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"          # require clicking email to activate
+ACCOUNT_PRESERVE_USERNAME_CASING = False
+
+# Dev email: prints messages (activation links) to the server console
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "noreply@localhost"
+
+# Make sure dev hostnames are allowed
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]

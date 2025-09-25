@@ -75,6 +75,7 @@ class UserTradeSettings(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trade_settings")
 
     # All optional — only applied if set
+    default_symbol = models.CharField(max_length=32, blank=True)
     default_side = models.CharField(max_length=4, choices=[("BUY", "Buy"), ("SELL", "Sell")], blank=True)
     default_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     default_notes = models.TextField(blank=True)

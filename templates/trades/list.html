@@ -1,31 +1,91 @@
 {% extends "base.html" %}
 {% block content %}
   <h2>Your Trades</h2>
-  {% if trades %}
-    <table>
-      <thead>
+
+  <!-- One toolbar: filters on the left, Charts button on the right -->
+  <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:1rem; gap:1rem;">
+
+    <!-- FILTERS (left) -->
+    <form method="get" style="display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; margin:0;">
+      <div>
+        <label>Symbol</label><br>
+        <input type="text" name="symbol" value="{{ filters.symbol }}" placeholder="AAPL / IBIT">
+      </div>
+
+      <div>
+        <label>Side</label><br>
+        <select name="side">
+          <option value="">Any</option>
+          <option value="BUY"  {% if filters.side == "BUY" %}selected{% endif %}>Buy</option>
+          <option value="SELL" {% if filters.side == "SELL" %}selected{% endif %}>Sell</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Start</label><br>
+        <input type="datetime-local" name="start" value="{{ filters.start }}">
+      </div>
+
+      <div>
+        <label>End</label><br>
+        <input type="datetime-local" name="end" value="{{ filters.end }}">
+      </div>
+
+      <div style="display:flex; gap:.5rem;">
+        <button type="submit" class="btn">Filter</button>
+        <a class="btn" href="{% url 'trades_list' %}">Reset</a>
+        <a class="btn" href="{% url 'trades_export_csv' %}?symbol={{ filters.symbol|urlencode }}&side={{ filters.side|urlencode }}&start={{ filters.start|urlencode }}&end={{ filters.end|urlencode }}">Export CSV</a>
+      </div>
+    </form>
+
+    <!-- ACTIONS (right) -->
+    <div style="display:flex; gap:.5rem;">
+      <a class="btn" href="{% url 'trades_calendar' %}">🗓️ View Calendar</a>
+      <a class="btn" href="{% url 'trades_charts' %}">📈 View Charts</a>
+    </div>
+  </div>
+
+
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>Entry Time</th>
+        <th>Symbol</th>
+        <th>Side</th>
+        <th>Qty</th>
+        <th>Entry Price</th>
+        <th>Exit Price</th>
+        <th>PnL</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in trades %}
         <tr>
-          <th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th>
-          <th>Entry</th><th>Exit</th><th>PnL</th><th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for t in trades %}
-        <tr>
-          <td>{{ t.entry_time|date:"Y-m-d H:i" }}</td>
+          <td>{{ t.entry_time|date:"Y-m-d H:i:s" }}</td>
           <td>{{ t.symbol }}</td>
-          <td>{{ t.get_side_display }}</td>
+          <td>{{ t.side }}</td>
           <td>{{ t.quantity }}</td>
           <td>{{ t.price }}</td>
-          <td>{% if t.exit_price %}{{ t.exit_price }} @ {{ t.exit_time|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
-          <td>{% if t.pnl is not None %}{{ t.pnl }}{% else %}—{% endif %}</td>
-          <td><a class="btn" href="{% url 'trades_edit' t.pk %}">Edit</a></td>
-          <td><a class="btn" href="{% url 'trades_delete' t.pk %}">Delete</a></td>
+          <td>{% if t.exit_price %}{{ t.exit_price }}{% else %}—{% endif %}</td>
+          <td>{% if t.pnl_value is not None %}{{ t.pnl_value|floatformat:2 }}{% else %}—{% endif %}</td>
+          <td>{{ t.notes|default:"" }}</td>
         </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>No trades yet. <a href="{% url 'trades_create' %}">Create your first trade</a>.</p>
+      {% empty %}
+        <tr><td colspan="8">No trades found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+    <div style="margin-top:1rem;">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}&symbol={{ filters.symbol|urlencode }}&side={{ filters.side|urlencode }}&start={{ filters.start|urlencode }}&end={{ filters.end|urlencode }}">Prev</a>
+      {% endif %}
+      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&symbol={{ filters.symbol|urlencode }}&side={{ filters.side|urlencode }}&start={{ filters.start|urlencode }}&end={{ filters.end|urlencode }}">Next</a>
+      {% endif %}
+    </div>
   {% endif %}
 {% endblock %}

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Trade
+from .models import Trade, UserTradeSettings
 from django.db.models import (
     F, Q, Value, Case, When, DecimalField, ExpressionWrapper
 )
@@ -35,6 +35,11 @@ class PnLFilter(admin.SimpleListFilter):
             return queryset.filter(pnl_value__lt=0)
         return queryset
 
+
+@admin.register(UserTradeSettings)
+class UserTradeSettingsAdmin(admin.ModelAdmin):
+    list_display = ("user", "default_symbol", "default_side", "default_quantity", "updated_at")
+    search_fields = ("user__username", "user__email")
 
 @admin.register(Trade)
 class TradeAdmin(admin.ModelAdmin):

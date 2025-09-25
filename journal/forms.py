@@ -1,5 +1,5 @@
 from django import forms
-from .models import Trade
+from .models import Trade, UserTradeSettings
 
 class TradeForm(forms.ModelForm):
     class Meta:
@@ -17,6 +17,8 @@ class TradeForm(forms.ModelForm):
         if user and not self.instance.pk:
             s = getattr(user, "trade_settings", None)
             if s:
+                if s.default_symbol:
+                    self.fields["symbol"].initial = s.default_symbol
                 if s.default_side:
                     self.fields["side"].initial = s.default_side
                 if s.default_quantity is not None:
@@ -28,4 +30,4 @@ class TradeForm(forms.ModelForm):
 class UserTradeSettingsForm(forms.ModelForm):
     class Meta:
         model = UserTradeSettings
-        fields = ["default_side", "default_quantity", "default_notes"]
+        fields = ["default_symbol", "default_side", "default_quantity", "default_notes"]

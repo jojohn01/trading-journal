@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>{{ month_name }} {{ year }} — Daily PnL</h2>
+  <p style="display:flex; gap:.5rem; align-items:center;">
+    <a class="btn" href="{% url 'trades_list' %}">🗃️ Trades</a>
+    <a class="btn" href="{% url 'trades_charts' %}">📈 Charts</a>
+    <span style="margin-left:auto;">
+      <a class="btn" href="{{ prev_link }}">← Prev</a>
+      <a class="btn" href="{{ next_link }}">Next →</a>
+    </span>
+  </p>
+
+  <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; margin-top:8px;">
+    <!-- Weekday headers -->
+    {% for wd in weekdays %}
+      <div style="font-weight:600; text-align:center;">{{ wd }}</div>
+    {% endfor %}
+
+    <!-- Calendar cells -->
+    {% for week in grid %}
+      {% for cell in week %}
+        {% if cell.in_month %}
+          <a href="{{ cell.link }}" title="{{ cell.tooltip }}" style="
+              display:block; padding:10px; border-radius:8px; text-decoration:none;
+              border:1px solid #e5e5e5; background: {{ cell.color }}; color:#111;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>{{ cell.date.day }}</strong>
+              {% if cell.pnl is not None %}
+                <span style="font-variant-numeric: tabular-nums;">{{ cell.pnl|floatformat:2 }}</span>
+              {% endif %}
+            </div>
+          </a>
+        {% else %}
+          <div style="padding:10px; border-radius:8px; border:1px dashed #eee; background:#fff; opacity:.6;">&nbsp;</div>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+
+  <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+    <span>Legend:</span>
+    <span style="display:inline-block; width:18px; height:18px; background:#ffdede; border:1px solid #ddd;"></span><small>loss</small>
+    <span style="display:inline-block; width:18px; height:18px; background:#f2f2f2; border:1px solid #ddd;"></span><small>zero/none</small>
+    <span style="display:inline-block; width:18px; height:18px; background:#d9f5d9; border:1px solid #ddd;"></span><small>profit</small>
+    {% if has_data %}<small style="margin-left:auto;">Max |PnL| this month: {{ legend_max }}</small>{% endif %}
+  </div>
+{% endblock %}

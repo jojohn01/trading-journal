@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Charts</h2>
+  <p><a class="btn" href="{% url 'trades_list' %}">← Back to Trades</a></p>
+
+  <!-- Filters toolbar -->
+  <form id="chart-filters" method="get" style="display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; margin-bottom: 1rem;">
+    <div>
+      <label>Symbol</label><br>
+      <input type="text" name="symbol" value="{{ request.GET.symbol }}" placeholder="AAPL / IBIT">
+    </div>
+    <div>
+      <label>Side</label><br>
+      <select name="side">
+        <option value="">Any</option>
+        <option value="BUY"  {% if request.GET.side == "BUY" %}selected{% endif %}>Buy</option>
+        <option value="SELL" {% if request.GET.side == "SELL" %}selected{% endif %}>Sell</option>
+      </select>
+    </div>
+    <div>
+      <label>Start</label><br>
+      <input type="datetime-local" name="start" value="{{ request.GET.start }}">
+    </div>
+    <div>
+      <label>End</label><br>
+      <input type="datetime-local" name="end" value="{{ request.GET.end }}">
+    </div>
+    <div style="display:flex; gap:.5rem;">
+      <button type="submit" class="btn">Apply</button>
+      <a class="btn" href="{% url 'trades_charts' %}">Reset</a>
+    </div>
+  </form>
+
+  <div style="max-width:1000px;">
+    <h3>Daily Realized PnL</h3>
+    <canvas id="dailyPnlChart" height="120"></canvas>
+
+    <h3 style="margin-top:2rem;">PnL by Symbol</h3>
+    <canvas id="symbolPnlChart" height="120"></canvas>
+
+    <h3 style="margin-top:2rem;">Per-Trade PnL (line)</h3>
+    <label style="display:inline-flex; gap:.5rem; align-items:center; margin-bottom:.5rem;">
+        <input type="checkbox" id="trade-cumulative-toggle">
+        <span>Show cumulative equity curve</span>
+    </label>
+    <canvas id="tradePnlChart" height="120"></canvas>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    function qs(params) {
+      const u = new URLSearchParams(params);
+      // remove empties
+      for (const [k,v] of [...u.entries()]) { if (!v) u.delete(k); }
+      return u.toString() ? ("?" + u.toString()) : "";
+    }
+
+    function getFilterParams() {
+      const f = document.getElementById("chart-filters");
+      return {
+        symbol: f.symbol.value.trim(),
+        side: f.side.value.trim(),
+        start: f.start.value.trim(),
+        end:   f.end.value.trim(),
+      };
+    }
+
+
+    // Build cumulative from per-trade PnL
+function toCumulative(values) {
+  const out = [];
+  values.reduce((acc, v) => {
+    const next = acc + (v ?? 0);
+    out.push(next);
+    return next;
+  }, 0);
+  return out;
+}
+
+// Segment color for plain per-trade (colors by the y that ends the segment)
+function segColorPerTrade(ctx) {
+  const y = ctx.p1?.parsed?.y;
+  return (y != null && y >= 0) ? "#2E7D32" : "#C62828";
+}
+
+// Segment color for cumulative (colors by the *trade PnL* ending the segment)
+function segColorCumulativeFactory(perTradePnL) {
+  return (ctx) => {
+    const i = ctx.p1DataIndex;                 // segment ends at this index
+    const v = (i != null) ? perTradePnL[i] : null;
+    return (v != null && v >= 0) ? "#2E7D32" : "#C62828";
+  };
+}
+
+function renderPerTradeChart(tradeSeries, cumulativeChecked) {
+  const ctx3 = document.getElementById("tradePnlChart").getContext("2d");
+
+  const perTrade = tradeSeries.values.slice();
+  const nextData = cumulativeChecked ? toCumulative(perTrade) : perTrade;
+  const nextSegColor = cumulativeChecked
+    ? segColorCumulativeFactory(perTrade)  // color by trade that ends the segment
+    : segColorPerTrade;                    // color by p1’s y (per-trade)
+
+  if (!window._tradeChart) {
+    // INITIALIZE ONCE
+    window._tradeChart = new Chart(ctx3, {
+      type: "line",
+      data: {
+        labels: tradeSeries.labels,   // same length for both modes
+        datasets: [{
+          label: cumulativeChecked ? "Equity Curve (cumulative)" : "Per-Trade PnL",
+          data: nextData,
+          borderWidth: 2,
+          tension: 0.15,
+          pointRadius: 0,
+          segment: { borderColor: nextSegColor },
+        }]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: "index", intersect: false },
+        // Make the morph feel nice
+        animation: { duration: 700, easing: "easeInOutCubic" },
+        transitions: {
+          active: { animation: { duration: 700, easing: "easeInOutCubic" } }
+        },
+        scales: {
+          y: { beginAtZero: true },
+          x: { ticks: { maxRotation: 0, autoSkip: true } }
+        },
+        plugins: { legend: { display: true } }
+      }
+    });
+  } else {
+    // UPDATE IN PLACE (no destroy) → smooth point-to-point tween
+    const ds = window._tradeChart.data.datasets[0];
+    ds.label = cumulativeChecked ? "Equity Curve (cumulative)" : "Per-Trade PnL";
+    ds.data = nextData;                          // same length → animated morph
+    ds.segment.borderColor = nextSegColor;       // swap the segment color logic
+
+    // If your y-axis range is very different between modes, you can optionally:
+    // window._tradeChart.options.scales.y.suggestedMin = Math.min(0, ...nextData);
+    // window._tradeChart.options.scales.y.suggestedMax = Math.max(0, ...nextData);
+
+    window._tradeChart.update("active");         // use the smoother transition
+  }
+}
+
+
+
+    // Plugin: glow for the whole line *and* the points
+    const glowPlugin = {
+        id: "glowPlugin",
+        // Re-stroke the line path with a colored shadow
+        afterDatasetsDraw(chart, args, pluginOptions) {
+        const {ctx} = chart;
+        chart.data.datasets.forEach((ds, di) => {
+            const meta = chart.getDatasetMeta(di);
+            if (!meta || meta.hidden || ds.type !== "line") return;
+            // We only glow our daily PnL datasets which have tag: "pnl"
+            if (ds._tag !== "pnl") return;
+
+            // Determine a representative color (use the segment scriptable on stroke, but here we pick per-point)
+            meta.data.forEach((pt, i) => {
+            const v = ds.data[i];
+            if (v == null) return;
+            const color = v >= 0 ? "rgba(46,125,50,0.85)" : "rgba(198,40,40,0.85)"; // green/red
+            const {x, y} = pt.getCenterPoint();
+
+            // shadowed point glow
+            ctx.save();
+            ctx.shadowBlur = 24;                       // point glow strength
+            ctx.shadowColor = color;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+            });
+        });
+        },
+        // Optional: add a soft halo to the line stroke itself
+        beforeDatasetsDraw(chart, args, pluginOptions) {
+        const {ctx, data} = chart;
+        chart.data.datasets.forEach((ds, di) => {
+            const meta = chart.getDatasetMeta(di);
+            if (!meta || meta.hidden || ds.type !== "line") return;
+            if (ds._tag !== "pnl") return;
+
+            // Draw the path twice: big blur (halo), then Chart.js will draw normal stroke on top
+            ctx.save();
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.shadowBlur = 18; // line halo strength
+            // We can't easily vary shadow per-pixel here, so pick a neutral glow
+            ctx.shadowColor = "rgba(0,0,0,0.15)";
+            ctx.strokeStyle = "rgba(0,0,0,0.0)";
+            ctx.lineWidth = (ds.borderWidth || 2) + 6;
+            ctx.beginPath();
+            meta.dataset.draw(ctx, args, meta._dataset);
+            ctx.stroke();
+            ctx.restore();
+        });
+        }
+    };
+
+    async function renderCharts() {
+        const params = getFilterParams();
+        const dailyUrl   = "{% url 'api_daily_pnl' %}"     + qs(params);
+        const symbolUrl  = "{% url 'api_symbol_pnl' %}"    + qs(params);
+        const tradesUrl  = "{% url 'api_trade_pnl_series' %}" + qs(params);  // NEW
+
+        const [daily, sym, tradeSeries] = await Promise.all([
+            fetch(dailyUrl,  {credentials: "same-origin"}).then(r => r.json()),
+            fetch(symbolUrl, {credentials: "same-origin"}).then(r => r.json()),
+            fetch(tradesUrl, {credentials: "same-origin"}).then(r => r.json()),
+        ]);
+
+        // destroy old charts if present
+        if (window._dailyChart)  window._dailyChart.destroy();
+        if (window._symbolChart) window._symbolChart.destroy();
+        if (window._tradeChart)  window._tradeChart.destroy();  // NEW
+
+        // Build positive/negative datasets for area fills to zero baseline
+        const pos = daily.values.map(v => (v >= 0 ? v : null));
+        const neg = daily.values.map(v => (v < 0  ? v : null));
+
+        // Segment color scriptable for continuous stroke color across zero
+        const segmentBorderColor = ctx => {
+        const v = ctx.p0.parsed.y; // segment starts at previous point
+        return v >= 0 ? "#2E7D32" : "#C62828";
+        };
+
+        // Daily PnL chart
+        const ctx1 = document.getElementById("dailyPnlChart").getContext("2d");
+        window._dailyChart = new Chart(ctx1, {
+        type: "line",
+        data: {
+            labels: daily.labels,
+            datasets: [
+            // Positive area fill to 0
+            {
+                _tag: "pnl",
+                label: "PnL (+)",
+                data: pos,
+                type: "line",
+                borderColor: "#2E7D32",
+                backgroundColor: "rgba(46,125,50,0.25)",
+                fill: { target: { value: 0 } }, // area between line and y=0
+                spanGaps: false,
+                tension: 0.25,
+                pointRadius: 0, // points handled by glow plugin
+                borderWidth: 2,
+                segment: { borderColor: segmentBorderColor },
+            },
+            // Negative area fill to 0
+            {
+                _tag: "pnl",
+                label: "PnL (−)",
+                data: neg,
+                type: "line",
+                borderColor: "#C62828",
+                backgroundColor: "rgba(198,40,40,0.25)",
+                fill: { target: { value: 0 } },
+                spanGaps: false,
+                tension: 0.25,
+                pointRadius: 0,
+                borderWidth: 2,
+                segment: { borderColor: segmentBorderColor },
+            }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: "index", intersect: false },
+            scales: {
+            y: { beginAtZero: true },
+            x: { ticks: { maxRotation: 0, autoSkip: true } }
+            },
+            plugins: { legend: { display: true } }
+        },
+        plugins: [glowPlugin]
+        });
+
+        // --- Your existing symbol bar stays the same ---
+        const ctx2 = document.getElementById("symbolPnlChart").getContext("2d");
+        window._symbolChart = new Chart(ctx2, {
+        type: "bar",
+        data: {
+            labels: sym.labels,
+            datasets: [{ label: "PnL by Symbol", data: sym.values }]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+    
+    // --- Per-Trade chart (toggle between per-trade and cumulative) ---
+    const toggle = document.getElementById("trade-cumulative-toggle");
+    renderPerTradeChart(tradeSeries, toggle.checked);
+    toggle.onchange = () => renderPerTradeChart(tradeSeries, toggle.checked);
+
+    }
+
+    renderCharts().catch(console.error);
+    document.getElementById("chart-filters").addEventListener("submit", (e) => {
+        e.preventDefault();
+        renderCharts().catch(console.error);
+    });
+    </script>
+
+{% endblock %}
