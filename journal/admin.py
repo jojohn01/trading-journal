@@ -3,7 +3,11 @@ from .models import Trade, UserTradeSettings
 from django.db.models import (
     F, Q, Value, Case, When, DecimalField, ExpressionWrapper
 )
-
+from allauth.account.models import EmailAddress, EmailConfirmation
+from allauth.account.admin import EmailAddressAdmin, EmailConfirmationAdmin
+from allauth.socialaccount.models import SocialApp, SocialAccount, SocialToken
+from allauth.socialaccount.admin import SocialAppAdmin, SocialAccountAdmin, SocialTokenAdmin
+from django.contrib.auth import get_user_model
 
 class StatusFilter(admin.SimpleListFilter):
     title = "status"
@@ -118,3 +122,37 @@ class TradeAdmin(admin.ModelAdmin):
         if not change and not obj.owner_id:
             obj.owner = request.user
         super().save_model(request, obj, form, change)
+
+
+
+if not admin.site.is_registered(EmailAddress):
+    admin.site.register(EmailAddress, EmailAddressAdmin)
+if not admin.site.is_registered(EmailConfirmation):
+    admin.site.register(EmailConfirmation, EmailConfirmationAdmin)
+if not admin.site.is_registered(SocialApp):
+    admin.site.register(SocialApp, SocialAppAdmin)
+if not admin.site.is_registered(SocialAccount):
+    admin.site.register(SocialAccount, SocialAccountAdmin)
+if not admin.site.is_registered(SocialToken):
+    admin.site.register(SocialToken, SocialTokenAdmin)
+
+
+class EmailAddressInline(admin.TabularInline):
+    model = EmailAddress
+    extra = 0
+    fields = ("email", "primary", "verified")
+    readonly_fields = ()  # make fields editable
+
+User = get_user_model()
+
+try:
+    # If someone already registered a custom UserAdmin, extend it; otherwise register fresh
+    from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+    class UserAdmin(DjangoUserAdmin):
+        inlines = list(getattr(DjangoUserAdmin, "inlines", [])) + [EmailAddressInline]
+    admin.site.unregister(User)
+    admin.site.register(User, UserAdmin)
+except admin.sites.NotRegistered:
+    class UserAdmin(admin.ModelAdmin):
+        inlines = [EmailAddressInline]
+    admin.site.register(User, UserAdmin)
