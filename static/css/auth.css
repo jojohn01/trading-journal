@@ -1,0 +1,85 @@
+.auth-wrap {
+  min-height: calc(100vh - 140px);
+  display: grid; place-items: center;
+}
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.08);
+  border: 1px solid #eee;
+}
+.auth-card h1 {
+  font-size: 1.4rem;
+  margin: 0 0 14px;
+}
+.auth-card p.subtle { color:#666; margin-top:0; }
+.auth-card .btn { display:inline-block; padding:10px 14px; border-radius:10px; text-decoration:none; border:1px solid #ddd; }
+.auth-card .btn-primary { background:#111; color:#fff; border-color:#111; }
+.auth-card .btn-light { background:#f7f7f7; }
+.auth-card .btn-google {
+  display:flex; align-items:center; justify-content:center; gap:.5rem;
+  background:#fff; border:1px solid #ddd;
+}
+.auth-card form .field { margin-bottom:12px; }
+.auth-card label { display:block; font-weight:600; margin-bottom:6px; }
+.auth-card input[type="text"],
+.auth-card input[type="email"],
+.auth-card input[type="password"] {
+  width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px;
+}
+.auth-card .hr {
+  display:flex; align-items:center; gap:10px; color:#888; margin:12px 0;
+}
+.auth-card .hr::before, .auth-card .hr::after {
+  content:""; height:1px; background:#eee; flex:1;
+}
+.auth-card .footer { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
+.auth-card .errors { background:#fdecea; color:#611a15; padding:10px 12px; border-radius:10px; border:1px solid #f5c6cb; margin-bottom:12px; }
+
+
+/* Center the card perfectly */
+.auth-viewport {
+  min-height: calc(100vh - 140px);
+  display: grid;
+  place-items: center;
+}
+
+/* Square look (adjust size if you like) */
+.auth-card--square {
+  width: 420px;
+  height: 420px;           /* gives that square look */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* Title spacing */
+.auth-title { margin: 0 0 6px; }
+
+/* Form layout */
+.auth-form .field { margin-bottom: 12px; }
+.auth-form .field-error { color: #ffb4b4; font-size: .9rem; margin-top: 6px; }
+
+/* Actions row */
+.auth-actions {
+  display: flex; gap: .5rem; justify-content: space-between; align-items: center;
+  margin-top: 6px;
+}
+
+/* Full-width Google button under the divider */
+.btn-block { width: 100%; text-align: center; margin-top: 10px; }
+.btn-google { display: flex; gap: .5rem; align-items: center; justify-content: center; }
+
+/* Bottom helper text */
+.auth-bottom { margin-top: 12px; text-align: center; }
+
+/* Responsive fallback for small screens */
+@media (max-width: 480px) {
+  .auth-card--square {
+    width: 100%;
+    height: auto;            /* relax fixed height on small screens */
+  }
+}

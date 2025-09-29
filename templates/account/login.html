@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n account socialaccount %}
+
+{% block content %}
+<div class="auth-viewport">
+  <div class="auth-card auth-card--square">
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="subtle">Sign in to your trading journal.</p>
+
+    {% if form.non_field_errors %}
+      <div class="errors">Please fix the errors below.</div>
+    {% endif %}
+
+    <form method="post" action="{% url 'account_login' %}" class="auth-form">
+      {% csrf_token %}
+      {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+      {% endif %}
+
+      <div class="field">
+        <label for="id_login">Email or Username</label>
+        <input id="id_login" name="login" type="text" autocomplete="username" required>
+        {% if form.login.errors %}<div class="field-error">{{ form.login.errors|striptags }}</div>{% endif %}
+      </div>
+
+      <div class="field">
+        <label for="id_password">Password</label>
+        <input id="id_password" name="password" type="password" autocomplete="current-password" required>
+        {% if form.password.errors %}<div class="field-error">{{ form.password.errors|striptags }}</div>{% endif %}
+      </div>
+
+      <div class="auth-actions">
+        <a class="btn btn-light" href="{% url 'account_reset_password' %}">Forgot password?</a>
+        <button class="btn btn-primary" type="submit">Sign in</button>
+      </div>
+    </form>
+
+    <div class="hr"><span>or</span></div>
+
+    <a class="btn btn-google btn-block" href="{% provider_login_url 'google' process='login' %}">
+      <img alt="" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18">
+      Continue with Google
+    </a>
+
+    <p class="auth-bottom">
+      New here?
+      <a href="{% url 'account_signup' %}{% if redirect_field_value %}?{{ redirect_field_name }}={{ redirect_field_value|urlencode }}{% endif %}">
+        Create an account
+      </a>
+    </p>
+  </div>
+</div>
+{% endblock %}

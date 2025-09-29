@@ -32,7 +32,7 @@
   </form>
 
   <div style="max-width:1000px;">
-    <h3>Daily Realized PnL</h3>
+    <h3>Cumulative Daily Realized PnL</h3>
     <canvas id="dailyPnlChart" height="120"></canvas>
 
     <h3 style="margin-top:2rem;">PnL by Symbol</h3>
@@ -148,61 +148,53 @@ function renderPerTradeChart(tradeSeries, cumulativeChecked) {
 
 
 
-    // Plugin: glow for the whole line *and* the points
     const glowPlugin = {
-        id: "glowPlugin",
-        // Re-stroke the line path with a colored shadow
-        afterDatasetsDraw(chart, args, pluginOptions) {
-        const {ctx} = chart;
+      id: "glowPlugin",
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
         chart.data.datasets.forEach((ds, di) => {
-            const meta = chart.getDatasetMeta(di);
-            if (!meta || meta.hidden || ds.type !== "line") return;
-            // We only glow our daily PnL datasets which have tag: "pnl"
-            if (ds._tag !== "pnl") return;
+          const meta = chart.getDatasetMeta(di);
+          if (!meta || meta.hidden || ds.type !== "line") return;
+          if (ds._tag !== "pnl-stroke") return;   // <--- only the stroke dataset
+          const deltas = ds._delta || ds.data;
 
-            // Determine a representative color (use the segment scriptable on stroke, but here we pick per-point)
-            meta.data.forEach((pt, i) => {
-            const v = ds.data[i];
+          meta.data.forEach((pt, i) => {
+            const v = deltas[i];
             if (v == null) return;
-            const color = v >= 0 ? "rgba(46,125,50,0.85)" : "rgba(198,40,40,0.85)"; // green/red
-            const {x, y} = pt.getCenterPoint();
-
-            // shadowed point glow
+            const color = v >= 0 ? "rgba(46,125,50,0.85)" : "rgba(198,40,40,0.85)";
+            const { x, y } = pt.getCenterPoint();
             ctx.save();
-            ctx.shadowBlur = 24;                       // point glow strength
+            ctx.shadowBlur = 24;
             ctx.shadowColor = color;
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.arc(x, y, 4, 0, Math.PI*2);
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
-            });
+          });
         });
-        },
-        // Optional: add a soft halo to the line stroke itself
-        beforeDatasetsDraw(chart, args, pluginOptions) {
-        const {ctx, data} = chart;
+      },
+      beforeDatasetsDraw(chart) {
+        const { ctx } = chart;
         chart.data.datasets.forEach((ds, di) => {
-            const meta = chart.getDatasetMeta(di);
-            if (!meta || meta.hidden || ds.type !== "line") return;
-            if (ds._tag !== "pnl") return;
-
-            // Draw the path twice: big blur (halo), then Chart.js will draw normal stroke on top
-            ctx.save();
-            ctx.lineJoin = "round";
-            ctx.lineCap = "round";
-            ctx.shadowBlur = 18; // line halo strength
-            // We can't easily vary shadow per-pixel here, so pick a neutral glow
-            ctx.shadowColor = "rgba(0,0,0,0.15)";
-            ctx.strokeStyle = "rgba(0,0,0,0.0)";
-            ctx.lineWidth = (ds.borderWidth || 2) + 6;
-            ctx.beginPath();
-            meta.dataset.draw(ctx, args, meta._dataset);
-            ctx.stroke();
-            ctx.restore();
+          const meta = chart.getDatasetMeta(di);
+          if (!meta || meta.hidden || ds.type !== "line") return;
+          if (ds._tag !== "pnl-stroke") return;   // <--- only the stroke dataset
+          ctx.save();
+          ctx.lineJoin = "round";
+          ctx.lineCap  = "round";
+          ctx.shadowBlur = 18;
+          ctx.shadowColor = "rgba(0,0,0,0.15)";
+          ctx.strokeStyle = "rgba(0,0,0,0.0)";
+          ctx.lineWidth = (ds.borderWidth || 2) + 6;
+          ctx.beginPath();
+          meta.dataset.draw(ctx);
+          ctx.stroke();
+          ctx.restore();
         });
-        }
+      }
     };
+
 
     async function renderCharts() {
         const params = getFilterParams();
@@ -225,62 +217,119 @@ function renderPerTradeChart(tradeSeries, cumulativeChecked) {
         const pos = daily.values.map(v => (v >= 0 ? v : null));
         const neg = daily.values.map(v => (v < 0  ? v : null));
 
+
+        // Cumulative array for tooltip
+        const cumulative = (function toCum(vals){
+          const out = [];
+          vals.reduce((acc, v) => {
+            const next = acc + (v ?? 0);
+            out.push(next);
+            return next;
+          }, 0);
+          return out;
+        })(daily.values);
+
+
         // Segment color scriptable for continuous stroke color across zero
         const segmentBorderColor = ctx => {
         const v = ctx.p0.parsed.y; // segment starts at previous point
         return v >= 0 ? "#2E7D32" : "#C62828";
         };
 
-        // Daily PnL chart
+        // tiny currency formatter (adjust as you like)
+        const fmt = n => (n === null || n === undefined) ? "—" :
+          (n >= 0 ? `+$${n.toFixed(2)}` : `-$${Math.abs(n).toFixed(2)}`);
+
+
+        // cumulative is already computed from daily.values
         const ctx1 = document.getElementById("dailyPnlChart").getContext("2d");
         window._dailyChart = new Chart(ctx1, {
-        type: "line",
-        data: {
+          type: "line",
+          data: {
             labels: daily.labels,
             datasets: [
-            // Positive area fill to 0
-            {
-                _tag: "pnl",
-                label: "PnL (+)",
-                data: pos,
-                type: "line",
-                borderColor: "#2E7D32",
-                backgroundColor: "rgba(46,125,50,0.25)",
-                fill: { target: { value: 0 } }, // area between line and y=0
-                spanGaps: false,
-                tension: 0.25,
-                pointRadius: 0, // points handled by glow plugin
+              // --- CUMULATIVE STROKE (the *only* dataset we want the glow/points to use) ---
+              {
+                _tag: "pnl-stroke",            // <--- unique tag
+                label: "Cumulative PnL",
+                data: cumulative,              // positions = cumulative
+                _delta: daily.values,          // for coloring by daily change
                 borderWidth: 2,
-                segment: { borderColor: segmentBorderColor },
-            },
-            // Negative area fill to 0
-            {
-                _tag: "pnl",
-                label: "PnL (−)",
-                data: neg,
-                type: "line",
-                borderColor: "#C62828",
-                backgroundColor: "rgba(198,40,40,0.25)",
-                fill: { target: { value: 0 } },
-                spanGaps: false,
+                backgroundColor: "transparent",
+                fill: false,
+                pointRadius: 0,                // default points off; glow draws points
                 tension: 0.25,
-                pointRadius: 0,
-                borderWidth: 2,
-                segment: { borderColor: segmentBorderColor },
-            }
+                segment: {
+                  // color segments by the *daily* change that ends the segment
+                  borderColor: (ctx) => {
+                    const i = ctx.p1DataIndex;
+                    const v = (i != null) ? daily.values[i] : null;
+                    return (v != null && v >= 0) ? "#2E7D32" : "#C62828";
+                  }
+                },
+                order: 1
+              },
+
+              // --- OPTIONAL: leave these out if you want no area fills under a cumulative line ---
+              // If you keep them, tag as "pnl-fill" so the glow plugin ignores them.
+              // {
+              //   _tag: "pnl-fill",
+              //   label: "PnL (+)",
+              //   data: daily.values.map(v => (v >= 0 ? v : null)),
+              //   borderWidth: 0,
+              //   backgroundColor: "rgba(46,125,50,0.25)",
+              //   type: "line",
+              //   fill: { target: { value: 0 } },
+              //   spanGaps: true,
+              //   tension: 0.25,
+              //   pointRadius: 0,
+              //   order: 0,
+              //   tooltip: { enabled: false },
+              // },
+              // {
+              //   _tag: "pnl-fill",
+              //   label: "PnL (−)",
+              //   data: daily.values.map(v => (v < 0 ? v : null)),
+              //   borderWidth: 0,
+              //   backgroundColor: "rgba(198,40,40,0.25)",
+              //   type: "line",
+              //   fill: { target: { value: 0 } },
+              //   spanGaps: true,
+              //   tension: 0.25,
+              //   pointRadius: 0,
+              //   order: 0,
+              //   tooltip: { enabled: false },
+              // },
             ]
-        },
-        options: {
+          },
+          options: {
             responsive: true,
             interaction: { mode: "index", intersect: false },
             scales: {
-            y: { beginAtZero: true },
-            x: { ticks: { maxRotation: 0, autoSkip: true } }
+              y: { beginAtZero: true },
+              x: { ticks: { maxRotation: 0, autoSkip: true } }
             },
-            plugins: { legend: { display: true } }
-        },
-        plugins: [glowPlugin]
+            plugins: {
+              legend: { display: true },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const i = ctx.dataIndex;
+                    const d = daily.values[i] ?? null;
+                    const c = cumulative[i] ?? null;
+                    const fmt = n => (n == null) ? "—" : (n >= 0 ? `+$${n.toFixed(2)}` : `-$${Math.abs(n).toFixed(2)}`);
+                    return [`Daily: ${fmt(d)}`, `Cumulative: ${fmt(c)}`];
+                  },
+                  labelColor: () => ({ borderColor: 'transparent', backgroundColor: 'transparent' }),
+                },
+                // Only show tooltip for the stroke dataset
+                filter: (ctx) => ctx.dataset?._tag === "pnl-stroke",
+              }
+            }
+          },
+          plugins: [glowPlugin]
         });
+
 
         // --- Your existing symbol bar stays the same ---
         const ctx2 = document.getElementById("symbolPnlChart").getContext("2d");

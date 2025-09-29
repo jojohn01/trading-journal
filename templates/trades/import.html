@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Import Trades</h2>
+  <form method="post" enctype="multipart/form-data" style="margin-bottom:1rem;">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-primary" type="submit">Upload</button>
+  </form>
+
+  {% if file_errors %}
+    <div style="color:#b00020;">
+      <strong>File errors:</strong>
+      <ul>{% for e in file_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+
+  {% if preview %}
+    <h3>Preview{% if has_errors %} (fix errors before importing){% endif %}</h3>
+    <p>{{ count_ok }} / {{ count_total }} rows OK{% if has_errors %}; others have issues{% endif %}.</p>
+
+    <table border="1" cellpadding="6" style="border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th>#</th><th>entry_time</th><th>symbol</th><th>side</th>
+          <th>qty</th><th>price</th><th>exit_price</th><th>exit_time</th><th>notes</th><th>errors</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in preview %}
+          <tr>
+            <td>{{ p.line }}</td>
+            <td>{{ p.data.entry_time }}</td>
+            <td>{{ p.data.symbol }}</td>
+            <td>{{ p.data.side }}</td>
+            <td>{{ p.data.quantity }}</td>
+            <td>{{ p.data.price }}</td>
+            <td>{{ p.data.exit_price }}</td>
+            <td>{{ p.data.exit_time }}</td>
+            <td>{{ p.data.notes|default:"" }}</td>
+            <td>
+              {% if p.errors %}
+                <ul style="color:#b00020;">
+                  {% for e in p.errors %}<li>{{ e }}</li>{% endfor %}
+                </ul>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if not has_errors %}
+      <form method="post" enctype="multipart/form-data" style="margin-top:1rem;">
+        {% csrf_token %}
+        <input type="hidden" name="dry_run" value="false">
+        {# Re-upload the file to commit; simplest approach for now #}
+        <p><em>Re-select the same file to confirm import:</em></p>
+        <input type="file" name="file" required>
+        <button class="btn btn-success" type="submit">Import Now</button>
+      </form>
+    {% endif %}
+  {% endif %}
+{% endblock %}

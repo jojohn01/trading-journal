@@ -1,5 +1,5 @@
 from django.urls import path, include
-from .views import TradeViewSet, healthz, home, trades_list, trades_create, trades_edit, trades_delete, trades_export_csv, dashboard, profile, trades_charts_page, api_daily_pnl, api_symbol_pnl, api_trade_pnl_series, trades_calendar_page
+from .views import TradeViewSet, healthz, home, trades_list, trades_create, trades_edit, trades_delete, trades_export_csv, dashboard, profile, trades_charts_page, api_daily_pnl, api_symbol_pnl, api_trade_pnl_series, trades_calendar_page, trades_import
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
@@ -21,4 +21,5 @@ urlpatterns = [
     path("api/stats/symbol-pnl/", api_symbol_pnl, name="api_symbol_pnl"),
     path("api/stats/trade-pnl/", api_trade_pnl_series, name="api_trade_pnl_series"),
     path("trades/calendar/", trades_calendar_page, name="trades_calendar"),
+    path("trades/import/", trades_import, name="trades_import"),
 ]

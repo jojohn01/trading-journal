@@ -1,0 +1,14 @@
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h1>{{ title }}</h1>
+    {% if subtitle %}<p class="subtle">{{ subtitle }}</p>{% endif %}
+
+    {% if form.errors %}
+      <div class="errors">
+        Please fix the errors below.
+      </div>
+    {% endif %}
+
+    {% block auth_card_body %}{% endblock %}
+  </div>
+</div>

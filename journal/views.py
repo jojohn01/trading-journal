@@ -3,7 +3,7 @@ from django.http import JsonResponse, HttpResponse
 from rest_framework import viewsets, permissions
 from .models import Trade, UserTradeSettings
 from .serializers import TradeSerializer
-from .forms import TradeForm, UserTradeSettingsForm
+from .forms import TradeForm, UserTradeSettingsForm, TradesImportForm
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -14,6 +14,7 @@ import csv
 from django.db.models.functions import TruncDate
 import calendar as _cal
 from datetime import date, datetime, timedelta
+import openpyxl
 
 PNL_EXPR = Case(
     When(side="BUY",  then=(F("exit_price") - F("price")) * F("quantity")),
@@ -21,6 +22,10 @@ PNL_EXPR = Case(
     default=None,
     output_field=DecimalField(max_digits=16, decimal_places=2),
 )
+
+EXPECTED = ["entry_time","symbol","side","quantity","price","exit_price","exit_time","notes"]
+
+
 
 def healthz(_request):
     return JsonResponse({"status": "ok"})
@@ -55,6 +60,71 @@ def _parse_dt(s: str | None):
     return None
 
 
+def _excel_serial_to_datetime(n: float):
+    """Convert Excel serial date/time to a timezone-aware datetime."""
+    # Excel's day 0 is 1899-12-30 (with the 1900 leap-year bug baked in).
+    origin = datetime(1899, 12, 30)
+    dt = origin + timedelta(days=float(n))
+    # openpyxl/pure Excel serials are naive; make aware in project TZ
+    return timezone.make_aware(dt) if timezone.is_naive(dt) else dt
+
+def _coerce_dt_any(val):
+    """
+    Accepts:
+      - datetime/date objects
+      - Excel serial numbers (int/float)
+      - strings in many common formats
+    Returns a timezone-aware datetime or None.
+    """
+    if val in (None, ""):
+        return None
+
+    # 1) Python datetime/date
+    if isinstance(val, datetime):
+        return timezone.make_aware(val) if timezone.is_naive(val) else val
+    if isinstance(val, date):
+        dt = datetime(val.year, val.month, val.day)
+        return timezone.make_aware(dt)
+
+    # 2) Excel serial (int/float)
+    if isinstance(val, (int, float)):
+        try:
+            return _excel_serial_to_datetime(val)
+        except Exception:
+            pass  # fall through to string parsing
+
+    # 3) Strings
+    s = str(val).strip()
+    # common ISO variants and “datetime-local” variants
+    fmts = [
+        "%Y-%m-%dT%H:%M:%S.%f%z",
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+
+        "%Y-%m-%d %H:%M:%S.%f%z",
+        "%Y-%m-%d %H:%M:%S%z",
+        "%Y-%m-%d %H:%M:%S.%f",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+
+        "%Y-%m-%d",  # date-only
+    ]
+    # allow trailing 'Z' for UTC
+    if s.endswith("Z"):
+        s = s[:-1] + "+0000"
+    for fmt in fmts:
+        try:
+            dt = datetime.strptime(s, fmt)
+            # if parsed with %z it’s already aware; else make aware
+            return dt if dt.tzinfo else timezone.make_aware(dt)
+        except ValueError:
+            continue
+
+    return None
+
+
 def _month_bounds(year: int, month: int):
     start = date(year, month, 1)
     if month == 12:
@@ -62,6 +132,13 @@ def _month_bounds(year: int, month: int):
     else:
         next_month = date(year, month + 1, 1)
     return start, next_month  # [start, next_month)
+
+def _coerce_decimal(s):
+    if s in (None, ""):
+        return None
+    # allow commas, spaces
+    return float(str(s).replace(",", "").strip())
+
 
 def _color_for_pnl(pnl: float | None, max_abs: float) -> str:
     """
@@ -431,6 +508,122 @@ def trades_list(request):
         "filters": {"symbol": symbol, "side": side, "start": start, "end": end},
     }
     return render(request, "trades/list.html", context)
+
+
+@login_required
+def trades_import(request):
+    context = {}
+    if request.method == "POST":
+        form = TradesImportForm(request.POST, request.FILES)
+        if form.is_valid():
+            f = request.FILES["file"]
+            dry_run = form.cleaned_data["dry_run"]
+
+            rows = []
+            errors = []
+            # --- CSV ---
+            if f.name.lower().endswith(".csv"):
+                text = TextIOWrapper(f.file, encoding="utf-8", errors="replace")
+                reader = csv.DictReader(text)
+                headers = [h.strip() for h in reader.fieldnames or []]
+                # allow extra columns like id/pnl; we only require our set to be present
+                missing = [c for c in EXPECTED if c not in headers]
+                if missing:
+                    errors.append(f"Missing required columns in CSV: {', '.join(missing)}")
+                else:
+                    for i, row in enumerate(reader, start=2):  # header is line 1
+                        rows.append((i, row))
+
+            # --- XLSX ---
+            elif f.name.lower().endswith(".xlsx"):
+                if not openpyxl:
+                    errors.append("openpyxl not installed in the container.")
+                else:
+                    wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+                    ws = wb.active
+                    headers = [str(c.value).strip() if c.value is not None else "" for c in next(ws.rows)]
+                    missing = [c for c in EXPECTED if c not in headers]
+                    if missing:
+                        errors.append(f"Missing required columns in XLSX: {', '.join(missing)}")
+                    else:
+                        idx = {h: headers.index(h) for h in headers}
+                        for r_i, r in enumerate(ws.iter_rows(min_row=2), start=2):
+                            row = {h: (r[idx[h]].value if h in idx else None) for h in headers}
+                            # cast all cell values to string except numbers/dates we’ll parse
+                            for k, v in row.items():
+                                if isinstance(v, str):
+                                    row[k] = v.strip()
+                            rows.append((r_i, row))
+            else:
+                errors.append("Unsupported file type. Please upload .csv or .xlsx.")
+
+            parsed = []
+            for line_no, row in rows:
+                # map/clean
+                symbol = (row.get("symbol") or "").strip().upper()
+                side   = (row.get("side") or "").strip().upper()
+                q      = _coerce_decimal(row.get("quantity"))
+                price  = _coerce_decimal(row.get("price"))
+                exitp  = _coerce_decimal(row.get("exit_price"))
+                notes  = (row.get("notes") or "").strip()
+
+                # dates: if xlsx gave Python datetimes, accept them
+                et = row.get("entry_time")
+                xt = row.get("exit_time")
+                entry_time = et if isinstance(et, datetime) else _coerce_dt_any(row.get("entry_time"))
+                exit_time  = xt if isinstance(xt, datetime) else _coerce_dt_any(row.get("exit_time"))
+
+                row_errs = []
+                if not symbol:
+                    row_errs.append("symbol required")
+                if side not in {"BUY","SELL"}:
+                    row_errs.append("side must be BUY or SELL")
+                if q is None:
+                    row_errs.append("quantity required")
+                if price is None:
+                    row_errs.append("price required")
+                if not entry_time:
+                    row_errs.append("entry_time required")
+
+                parsed.append({
+                    "line": line_no,
+                    "data": {
+                        "symbol": symbol,
+                        "side": side,
+                        "quantity": q,
+                        "price": price,
+                        "entry_time": entry_time,
+                        "exit_price": exitp,
+                        "exit_time": exit_time,
+                        "notes": notes,
+                    },
+                    "errors": row_errs,
+                })
+
+            context = {
+                "form": form,
+                "preview": parsed,
+                "has_errors": any(p["errors"] for p in parsed) or bool(errors),
+                "file_errors": errors,
+                "count_ok": sum(1 for p in parsed if not p["errors"]),
+                "count_total": len(parsed),
+            }
+
+            # commit if no errors and not a dry run
+            if not context["has_errors"] and not dry_run:
+                created = 0
+                for p in parsed:
+                    Trade.objects.create(owner=request.user, **p["data"])
+                    created += 1
+                messages.success(request, f"Imported {created} trades.")
+                return redirect("trades_list")
+
+            return render(request, "trades/import.html", context)
+
+    else:
+        form = TradesImportForm()
+    return render(request, "trades/import.html", {"form": form})
+
 
 @login_required
 def trades_export_csv(request):

@@ -34,6 +34,7 @@
       <div style="display:flex; gap:.5rem;">
         <button type="submit" class="btn">Filter</button>
         <a class="btn" href="{% url 'trades_list' %}">Reset</a>
+        <a class="btn" href="{% url 'trades_import' %}">⬆️ Import CSV/XLSX</a>
         <a class="btn" href="{% url 'trades_export_csv' %}?symbol={{ filters.symbol|urlencode }}&side={{ filters.side|urlencode }}&start={{ filters.start|urlencode }}&end={{ filters.end|urlencode }}">Export CSV</a>
       </div>
     </form>

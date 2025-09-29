@@ -184,6 +184,9 @@ ACCOUNT_RATE_LIMITS = {
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"          # require clicking email to activate
 ACCOUNT_PRESERVE_USERNAME_CASING = False
 
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+
 # Dev email: prints messages (activation links) to the server console
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = "noreply@localhost"

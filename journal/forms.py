@@ -31,3 +31,9 @@ class UserTradeSettingsForm(forms.ModelForm):
     class Meta:
         model = UserTradeSettings
         fields = ["default_symbol", "default_side", "default_quantity", "default_notes"]
+
+
+class TradesImportForm(forms.Form):
+    file = forms.FileField(help_text="Upload a CSV or XLSX exported from this app.")
+    dry_run = forms.BooleanField(required=False, initial=True, help_text="Preview without saving")
+    skip_existing = forms.BooleanField(required=False, initial=True, help_text="Skip trades that already exist (by entry time and symbol).")
