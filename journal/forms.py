@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class TradeForm(forms.ModelForm):
+    """Form for creating and editing Trade instances."""
     class Meta:
         model = Trade
         fields = ["symbol", "side", "quantity", "price", "entry_time", "exit_price", "exit_time", "notes"]
@@ -15,6 +16,7 @@ class TradeForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        """Initialize form, optionally setting defaults from user trade settings."""
         user = kwargs.pop("user", None)  # pass request.user from the view
         super().__init__(*args, **kwargs)
         if user and not self.instance.pk:
@@ -31,18 +33,21 @@ class TradeForm(forms.ModelForm):
 
 
 class UserTradeSettingsForm(forms.ModelForm):
+    """Form for editing user trade default settings."""
     class Meta:
         model = UserTradeSettings
         fields = ["default_symbol", "default_side", "default_quantity", "default_notes"]
 
 
 class TradesImportForm(forms.Form):
+    """Form for importing trades from a file (CSV/XLSX)."""
     file = forms.FileField(help_text="Upload a CSV or XLSX exported from this app.")
     dry_run = forms.BooleanField(required=False, initial=True, help_text="Preview without saving")
     skip_existing = forms.BooleanField(required=False, initial=True, help_text="Skip trades that already exist (by entry time and symbol).")
 
 
 class ProfileForm(forms.ModelForm):
+    """Form for editing user profile information."""
     class Meta:
         model = User
         fields = ["username", "email", "first_name", "last_name"]
@@ -52,6 +57,7 @@ class ProfileForm(forms.ModelForm):
         }
 
     def clean_username(self):
+        """Ensure username is unique (case-insensitive)."""
         uname = self.cleaned_data["username"]
         qs = User.objects.filter(username__iexact=uname).exclude(pk=self.instance.pk)
         if qs.exists():

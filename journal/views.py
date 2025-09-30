@@ -15,6 +15,7 @@ from django.db.models.functions import TruncDate
 import calendar as _cal
 from datetime import date, datetime, timedelta
 import openpyxl
+from io import TextIOWrapper
 
 PNL_EXPR = Case(
     When(side="BUY",  then=(F("exit_price") - F("price")) * F("quantity")),

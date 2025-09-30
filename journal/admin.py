@@ -10,13 +10,16 @@ from allauth.socialaccount.admin import SocialAppAdmin, SocialAccountAdmin, Soci
 from django.contrib.auth import get_user_model
 
 class StatusFilter(admin.SimpleListFilter):
+    """Admin filter for trade status (open/closed)."""
     title = "status"
     parameter_name = "status"
 
     def lookups(self, request, model_admin):
+        """Return filter options for status."""
         return (("open", "Open"), ("closed", "Closed"))
 
     def queryset(self, request, queryset):
+        """Filter queryset by open or closed status."""
         if self.value() == "open":
             return queryset.filter(exit_price__isnull=True, exit_time__isnull=True)
         if self.value() == "closed":
@@ -24,15 +27,16 @@ class StatusFilter(admin.SimpleListFilter):
         return queryset
 
 class PnLFilter(admin.SimpleListFilter):
+    """Admin filter for profit and loss (PnL)."""
     title = "PnL"
     parameter_name = "pnl"
 
     def lookups(self, request, model_admin):
+        """Return filter options for PnL."""
         return (("g", "Gain (≥ 0)"), ("l", "Loss (< 0)"))
 
     def queryset(self, request, queryset):
-        # Ensure annotation is present (Admin calls queryset() before get_queryset() sometimes),
-        # but in practice get_queryset below will cover it. Keeping this light:
+        """Filter queryset by PnL value."""
         if self.value() == "g":
             return queryset.filter(pnl_value__gte=0)
         if self.value() == "l":
@@ -42,29 +46,27 @@ class PnLFilter(admin.SimpleListFilter):
 
 @admin.register(UserTradeSettings)
 class UserTradeSettingsAdmin(admin.ModelAdmin):
+    """Admin configuration for UserTradeSettings model."""
     list_display = ("user", "default_symbol", "default_side", "default_quantity", "updated_at")
     search_fields = ("user__username", "user__email")
 
+
 @admin.register(Trade)
 class TradeAdmin(admin.ModelAdmin):
-    # Columns shown in the changelist table
+    """Admin configuration for the Trade model."""
     list_display = (
         "entry_time", "owner", "symbol", "side",
         "quantity", "price", "exit_price", "pnl", "status", "short_notes",
         "created_at",
     )
-    list_display_links = ("entry_time", "symbol")  # which columns link to edit page
-
-    # Search & filters
-    search_fields = ("symbol", "notes")            # 'side' is a choices field; search works but symbol/notes are most useful
-    list_filter = ("side", "entry_time", StatusFilter, PnLFilter)           # quick filters on the sidebar
-    date_hierarchy = "entry_time"                  # month/day drilldown above table
+    list_display_links = ("entry_time", "symbol")
+    search_fields = ("symbol", "notes")
+    list_filter = ("side", "entry_time", StatusFilter, PnLFilter)
+    date_hierarchy = "entry_time"
     ordering = ("-entry_time",)
     list_per_page = 25
-
-    # Form behavior
-    autocomplete_fields = ("owner",)               # helpful for superusers (even though we set owner automatically)
-    readonly_fields = ("owner", "created_at",)     # never editable
+    autocomplete_fields = ("owner",)
+    readonly_fields = ("owner", "created_at",)
     fieldsets = (
         (None, {
             "fields": ("symbol", "side", "quantity", "price", "notes")
@@ -78,11 +80,13 @@ class TradeAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
+        """
+        Annotate queryset with PnL value for admin display and filtering.
+        BUY:  (exit - entry) * qty
+        SELL: (entry - exit) * qty
+        If exit_price is NULL (open trade), PnL is NULL.
+        """
         qs = super().get_queryset(request)
-        # Annotate DB-side PnL:
-        # BUY:  (exit - entry) * qty
-        # SELL: (entry - exit) * qty
-        # If exit_price is NULL (open trade), PnL is NULL.
         buy_expr  = (F("exit_price") - F("price")) * F("quantity")
         sell_expr = (F("price") - F("exit_price")) * F("quantity")
 
@@ -95,30 +99,25 @@ class TradeAdmin(admin.ModelAdmin):
         )
         return qs.annotate(pnl_value=pnl_case)
 
-    # ---------- Display helpers ----------
     def pnl(self, obj):
-        # Prefer DB annotation for ordering/filtering; fall back to Python property if needed
+        """Return annotated PnL value for display."""
         return getattr(obj, "pnl_value", None)
     pnl.short_description = "PnL"
-    pnl.admin_order_field = "pnl_value"   # enables column sort by PnL
+    pnl.admin_order_field = "pnl_value"
 
     def status(self, obj):
-        """Open if no exit recorded; Closed otherwise (price or time set)."""
+        """Return 'Closed' if exit recorded, else 'Open'."""
         return "Closed" if (obj.exit_price is not None or obj.exit_time is not None) else "Open"
 
     def short_notes(self, obj):
-        """Trim long notes for table view."""
+        """Return truncated notes for table display."""
         if obj.notes and len(obj.notes) > 30:
             return obj.notes[:30] + "…"
         return obj.notes
     short_notes.short_description = "Notes"
 
-    # ---------- Auto-assign owner on create in Admin ----------
     def save_model(self, request, obj, form, change):
-        """
-        Ensure owner is set to the staff user creating the record,
-        only when creating (not changing).
-        """
+        """Auto-assign owner on create."""
         if not change and not obj.owner_id:
             obj.owner = request.user
         super().save_model(request, obj, form, change)
@@ -138,10 +137,11 @@ if not admin.site.is_registered(SocialToken):
 
 
 class EmailAddressInline(admin.TabularInline):
+    """Inline admin for user email addresses."""
     model = EmailAddress
     extra = 0
     fields = ("email", "primary", "verified")
-    readonly_fields = ()  # make fields editable
+    readonly_fields = ()
 
 User = get_user_model()
 
@@ -149,10 +149,12 @@ try:
     # If someone already registered a custom UserAdmin, extend it; otherwise register fresh
     from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
     class UserAdmin(DjangoUserAdmin):
+        """Custom UserAdmin with email address inline."""
         inlines = list(getattr(DjangoUserAdmin, "inlines", [])) + [EmailAddressInline]
     admin.site.unregister(User)
     admin.site.register(User, UserAdmin)
 except admin.sites.NotRegistered:
     class UserAdmin(admin.ModelAdmin):
+        """Fallback UserAdmin with email address inline."""
         inlines = [EmailAddressInline]
     admin.site.register(User, UserAdmin)

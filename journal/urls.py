@@ -1,3 +1,6 @@
+"""
+URL configuration for the journal app, including web views and API endpoints.
+"""
 from django.urls import path, include
 from .views import TradeViewSet, healthz, home, trades_list, trades_create, trades_edit, trades_delete, trades_export_csv, dashboard, profile, trades_charts_page, api_daily_pnl, api_symbol_pnl, api_trade_pnl_series, trades_calendar_page, trades_import
 from rest_framework.routers import DefaultRouter

@@ -56,8 +56,7 @@ INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
-    "allauth.socialaccount.providers.google",  # ← add later when ready
-
+    "allauth.socialaccount.providers.google",
 
 ]
 

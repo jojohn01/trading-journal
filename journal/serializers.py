@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Trade
 
 class TradeSerializer(serializers.ModelSerializer):
+    """Serializer for the Trade model, including computed PnL and owner display."""
     owner = serializers.StringRelatedField(read_only=True)
     pnl = serializers.SerializerMethodField()
 
@@ -11,5 +12,5 @@ class TradeSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', "pnl", 'created_at']
 
     def get_pnl(self, obj):
-        """Expose the Trade model’s computed PnL property."""
+        """Return the computed profit and loss for the trade."""
         return obj.pnl
