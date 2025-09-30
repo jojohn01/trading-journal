@@ -1,12 +1,14 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Trading Journal</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            :root {
+<head>
+    <meta charset="UTF-8">
+    <title>Trading Journal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Global theme -->
+    <style>
+        :root {
             --bg: #0d1117;
             --panel: #161b22;
             --text: #c9d1d9;
@@ -17,70 +19,108 @@
             --info-bg:#084298; --info-br:#0d6efd; --info-tx:#dbe7ff;
             --warn-bg:#664d03; --warn-br:#ffc107; --warn-tx:#fff3cd;
             --err-bg:#58151c; --err-br:#dc3545; --err-tx:#f8d7da;
-            }
-            * { box-sizing: border-box; }
-            body {
-            background: var(--bg); color: var(--text);
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
             font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans";
             margin: 2rem;
-            }
-            nav {
-            display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;
-            }
-            a { color: var(--accent); text-decoration:none; }
-            a:hover { text-decoration:underline; }
-            table { border-collapse: collapse; width: 100%; background: var(--panel); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
-            th, td { border-bottom: 1px solid var(--border); padding: .6rem .8rem; text-align: left; }
-            th { color: var(--muted); font-weight:600; background:#11161d; }
-            .btn {
-            padding: .45rem .8rem; border:1px solid var(--border);
-            background: #1b222c; color: var(--text); border-radius:8px; text-decoration:none; display:inline-block;
-            }
-            .btn:hover { background:#222a36; }
-            .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
-            .btn-primary:hover { filter: brightness(0.95); }
-            hr { border: none; border-top:1px solid var(--border); margin:1rem 0; }
+        }
+        nav {
+            display:flex;
+            gap:.75rem;
+            align-items:center;
+            flex-wrap:wrap;
+        }
+        a { color: var(--accent); text-decoration:none; }
+        a:hover { text-decoration:underline; }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background: var(--panel);
+            border:1px solid var(--border);
+            border-radius:8px;
+            overflow:hidden;
+        }
+        th, td {
+            border-bottom: 1px solid var(--border);
+            padding: .6rem .8rem;
+            text-align: left;
+        }
+        th {
+            color: var(--muted);
+            font-weight:600;
+            background:#11161d;
+        }
+        .btn {
+            padding: .45rem .8rem;
+            border:1px solid var(--border);
+            background: #1b222c;
+            color: var(--text);
+            border-radius:8px;
+            text-decoration:none;
+            display:inline-block;
+        }
+        .btn:hover { background:#222a36; }
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover { filter: brightness(0.95); }
+        hr { border: none; border-top:1px solid var(--border); margin:1rem 0; }
 
-            /* Flash messages */
-            .flash-wrap { margin:.75rem 0; }
-            .flash {
-            padding:.6rem .8rem; border-radius:8px; margin:.5rem 0; border:1px solid var(--border); background: var(--panel);
-            }
-            .flash-success { background: var(--success-bg); border-color: var(--success-br); color: var(--success-tx); }
-            .flash-info    { background: var(--info-bg);    border-color: var(--info-br);    color: var(--info-tx); }
-            .flash-warning { background: var(--warn-bg);    border-color: var(--warn-br);    color: var(--warn-tx); }
-            .flash-error   { background: var(--err-bg);     border-color: var(--err-br);     color: var(--err-tx); }
+        /* Flash messages */
+        .flash-wrap { margin:.75rem 0; }
+        .flash {
+            padding:.6rem .8rem;
+            border-radius:8px;
+            margin:.5rem 0;
+            border:1px solid var(--border);
+            background: var(--panel);
+        }
+        .flash-success { background: var(--success-bg); border-color: var(--success-br); color: var(--success-tx); }
+        .flash-info    { background: var(--info-bg);    border-color: var(--info-br);    color: var(--info-tx); }
+        .flash-warning { background: var(--warn-bg);    border-color: var(--warn-br);    color: var(--warn-tx); }
+        .flash-error   { background: var(--err-bg);     border-color: var(--err-br);     color: var(--err-tx); }
+    </style>
 
-        </style>  
-              <link rel="stylesheet" href="{% static 'css/auth.css' %}">
-    </head>
-    <body>
+    <!-- Global auth/login CSS -->
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+
+    <!-- Page-specific CSS (landing, dashboard, etc.) -->
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
     <nav>
-    <a href="/">Home</a>
-    <a href="/trades/">Trades</a>
-    <a class="btn btn-primary" href="/trades/new/">New Trade</a>
-    |
-    {% if user.is_authenticated %}
-        <a href="{% url 'dashboard' %}">Dashboard</a>
-        <a href="{% url 'profile' %}">Profile</a>
+        <a href="/">Home</a>
+        <a href="/trades/">Trades</a>
+        <a class="btn btn-primary" href="/trades/new/">New Trade</a>
         |
-        Logged in as {{ user.username }}
-        <form method="post" action="{% url 'account_logout' %}" style="display:inline;">
-        {% csrf_token %}
-        <button type="submit" class="btn">Logout</button>
-        </form>
-    {% else %}
-        <a href="{% url 'account_login' %}">Login</a>
-    {% endif %}
+        {% if user.is_authenticated %}
+            <a href="{% url 'profile' %}">Profile</a>
+            <a href="{% url 'trades_calendar' %}">Calendar</a>
+            |
+            Logged in as {{ user.username }}
+            <form method="post" action="{% url 'account_logout' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn">Logout</button>
+            </form>
+        {% else %}
+            <a href="{% url 'account_login' %}">Login</a>
+        {% endif %}
     </nav>
-        <hr>
-        {% if messages %}
+    <hr>
+
+    {% if messages %}
         <div class="flash-wrap">
             {% for message in messages %}
-            <div class="flash flash-{{ message.tags }}">{{ message }}</div>
+                <div class="flash flash-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         </div>
-        {% endif %}
-        {% block content %}{% endblock %}
-    </body>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</body>
 </html>

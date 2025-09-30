@@ -1,5 +1,8 @@
 from django import forms
 from .models import Trade, UserTradeSettings
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class TradeForm(forms.ModelForm):
     class Meta:
@@ -37,3 +40,20 @@ class TradesImportForm(forms.Form):
     file = forms.FileField(help_text="Upload a CSV or XLSX exported from this app.")
     dry_run = forms.BooleanField(required=False, initial=True, help_text="Preview without saving")
     skip_existing = forms.BooleanField(required=False, initial=True, help_text="Skip trades that already exist (by entry time and symbol).")
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["username", "email", "first_name", "last_name"]
+        widgets = {
+            "username": forms.TextInput(attrs={"autocomplete": "username"}),
+            "email": forms.EmailInput(attrs={"autocomplete": "email"}),
+        }
+
+    def clean_username(self):
+        uname = self.cleaned_data["username"]
+        qs = User.objects.filter(username__iexact=uname).exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("That username is taken.")
+        return uname

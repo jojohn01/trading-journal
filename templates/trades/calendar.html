@@ -1,47 +1,138 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+  /* ---------- Scoped calendar styles ---------- */
+  .cal-scope .bar {
+    display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin:.5rem 0 1rem;
+  }
+  .cal-scope .bar .spacer { flex:1; }
+  .cal-scope .title { margin:0; }
+
+  .cal-scope .grid {
+    display:grid; grid-template-columns: repeat(7, 1fr);
+    gap:8px; margin-top:8px;
+  }
+  .cal-scope .dow {
+    text-align:center; font-weight:600; color: var(--muted);
+  }
+
+  /* Calendar cells */
+  .cal-scope .cell {
+    display:block; padding:10px;
+    border-radius:10px; text-decoration:none;
+    background:#0f1520; border:1px solid var(--border);
+    color: var(--text);
+    min-height: 72px;
+    transition: filter .15s ease, transform .05s ease;
+  }
+  .cal-scope .cell:hover { filter: brightness(1.08); }
+  .cal-scope .cell:active { transform: translateY(1px); }
+
+  /* In-month cells get data-driven tint (inline background from view) */
+  .cal-scope .cell--in {
+    /* background color is injected inline via style="background: {{ cell.color }}" */
+    border:1px solid var(--border);
+    color: #0b1220; /* better contrast on the light tints */
+  }
+
+  /* Out-of-month placeholders */
+  .cal-scope .cell--out {
+    background: #0b1322; border:1px dashed var(--border); opacity:.5;
+  }
+
+  /* Top row inside each cell */
+  .cal-scope .cell-head {
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+  }
+  .cal-scope .day {
+    font-weight:700;
+  }
+  .cal-scope .pnl {
+    font-variant-numeric: tabular-nums;
+    font-weight:700;
+  }
+  .cal-scope .pnl.pos { color:#138a3f; }
+  .cal-scope .pnl.neg { color:#c01f1f; }
+
+  /* Legend / summary chips */
+  .cal-scope .legend {
+    margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .cal-scope .swatch {
+    display:inline-block; width:18px; height:18px; border:1px solid var(--border); border-radius:4px;
+  }
+  .cal-scope .chip {
+    border:1px solid var(--border);
+    background:#121826; color:var(--text);
+    border-radius:999px; padding:.25rem .6rem; display:inline-flex; gap:.4rem; align-items:center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 720px) {
+    .cal-scope .grid { gap:6px; }
+    .cal-scope .cell { padding:8px; min-height:64px; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-  <h2>{{ month_name }} {{ year }} — Daily PnL</h2>
-  <p style="display:flex; gap:.5rem; align-items:center;">
+<div class="cal-scope">
+
+  <!-- Header / actions -->
+  <div class="bar">
+    <h2 class="title">{{ month_name }} {{ year }} — Daily PnL</h2>
+    <div class="spacer"></div>
     <a class="btn" href="{% url 'trades_list' %}">🗃️ Trades</a>
     <a class="btn" href="{% url 'trades_charts' %}">📈 Charts</a>
-    <span style="margin-left:auto;">
-      <a class="btn" href="{{ prev_link }}">← Prev</a>
-      <a class="btn" href="{{ next_link }}">Next →</a>
-    </span>
-  </p>
+    <a class="btn" href="{{ prev_link }}">← Prev</a>
+    <a class="btn" href="{{ next_link }}">Next →</a>
+  </div>
 
-  <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; margin-top:8px;">
-    <!-- Weekday headers -->
+  <div class="grid">
+    {# Weekday headers #}
     {% for wd in weekdays %}
-      <div style="font-weight:600; text-align:center;">{{ wd }}</div>
+      <div class="dow">{{ wd }}</div>
     {% endfor %}
 
-    <!-- Calendar cells -->
+    {# Cells #}
     {% for week in grid %}
       {% for cell in week %}
         {% if cell.in_month %}
-          <a href="{{ cell.link }}" title="{{ cell.tooltip }}" style="
-              display:block; padding:10px; border-radius:8px; text-decoration:none;
-              border:1px solid #e5e5e5; background: {{ cell.color }}; color:#111;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong>{{ cell.date.day }}</strong>
+          <a href="{{ cell.link }}"
+             class="cell cell--in"
+             title="{{ cell.tooltip }}"
+             style="background: {{ cell.color }};">
+            <div class="cell-head">
+              <span class="day">{{ cell.date.day }}</span>
               {% if cell.pnl is not None %}
-                <span style="font-variant-numeric: tabular-nums;">{{ cell.pnl|floatformat:2 }}</span>
+                <span class="pnl {% if cell.pnl < 0 %}neg{% else %}pos{% endif %}">
+                  {% if cell.pnl >= 0 %}+{% endif %}{{ cell.pnl|floatformat:2 }}
+                </span>
               {% endif %}
             </div>
           </a>
         {% else %}
-          <div style="padding:10px; border-radius:8px; border:1px dashed #eee; background:#fff; opacity:.6;">&nbsp;</div>
+          <div class="cell cell--out" aria-hidden="true"></div>
         {% endif %}
       {% endfor %}
     {% endfor %}
   </div>
 
-  <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+  <div class="legend">
     <span>Legend:</span>
-    <span style="display:inline-block; width:18px; height:18px; background:#ffdede; border:1px solid #ddd;"></span><small>loss</small>
-    <span style="display:inline-block; width:18px; height:18px; background:#f2f2f2; border:1px solid #ddd;"></span><small>zero/none</small>
-    <span style="display:inline-block; width:18px; height:18px; background:#d9f5d9; border:1px solid #ddd;"></span><small>profit</small>
-    {% if has_data %}<small style="margin-left:auto;">Max |PnL| this month: {{ legend_max }}</small>{% endif %}
+    <span class="swatch" style="background:#ffdede;"></span><small>loss</small>
+    <span class="swatch" style="background:#f2f2f2;"></span><small>zero/none</small>
+    <span class="swatch" style="background:#d9f5d9;"></span><small>profit</small>
+
+    {% if has_data %}
+      <span class="chip" style="margin-left:auto;">
+        <strong>Total PnL:</strong>
+        <span>{% if month_total_pnl >= 0 %}+{% endif %}{{ month_total_pnl|floatformat:2 }}</span>
+      </span>
+    {% endif %}
   </div>
+
+</div>
 {% endblock %}

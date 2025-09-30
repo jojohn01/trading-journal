@@ -1,63 +1,117 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+  .import-scope .panel {
+    background: var(--panel); border:1px solid var(--border); border-radius:8px; padding:1rem;
+  }
+  .import-scope form { display:grid; gap:.75rem; margin:.75rem 0 1rem; }
+  .import-scope input[type="file"], .import-scope input[type="checkbox"] { accent-color: var(--accent); }
+  .import-scope label { color: var(--muted); }
+  .import-scope .grid { display:grid; gap:1rem; grid-template-columns: 1fr; }
+  .import-scope .errors-box, .import-scope .ok-box {
+    padding:.6rem .8rem; border-radius:8px; border:1px solid var(--border);
+  }
+  .errors-box { background:#2a1518; border-color:#7a1f28; color:#f8d7da; }
+  .ok-box { background:#0f2a1d; border-color:#1f7a4b; color:#cfead6; }
+  .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .clip { max-width: 36ch; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .muted { color: var(--muted); }
+</style>
+{% endblock %}
+
 {% block content %}
-  <h2>Import Trades</h2>
-  <form method="post" enctype="multipart/form-data" style="margin-bottom:1rem;">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button class="btn btn-primary" type="submit">Upload</button>
-  </form>
+<div class="import-scope">
+  <h1 style="margin:0 0 .25rem;">Import trades</h1>
+  <p class="muted" style="margin:0 0 1rem;">Upload a <strong>.csv</strong> or <strong>.xlsx</strong> with columns:
+    <code>entry_time, symbol, side, quantity, price, exit_price, exit_time, notes</code>.
+  </p>
+
+  <div class="panel">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div>
+        <label for="id_file">File</label><br>
+        <input id="id_file" type="file" name="file" required>
+      </div>
+      <div>
+        <label><input type="checkbox" name="dry_run" {% if form.dry_run.value %}checked{% endif %}> Dry run (preview only)</label>
+      </div>
+      <div style="display:flex; gap:.5rem; align-items:center;">
+        <button class="btn btn-primary" type="submit">Upload</button>
+        <a class="btn" href="{% url 'trades_list' %}">Back to list</a>
+      </div>
+    </form>
+  </div>
 
   {% if file_errors %}
-    <div style="color:#b00020;">
+    <div class="errors-box" style="margin-top:1rem;">
       <strong>File errors:</strong>
-      <ul>{% for e in file_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+      <ul>
+        {% for e in file_errors %}<li>{{ e }}</li>{% endfor %}
+      </ul>
     </div>
   {% endif %}
 
   {% if preview %}
-    <h3>Preview{% if has_errors %} (fix errors before importing){% endif %}</h3>
-    <p>{{ count_ok }} / {{ count_total }} rows OK{% if has_errors %}; others have issues{% endif %}.</p>
+    <div class="grid" style="margin-top:1rem;">
+      <div class="{% if has_errors %}errors-box{% else %}ok-box{% endif %}">
+        {% if has_errors %}
+          <strong>Found issues.</strong>
+          <div>{{ count_ok }} valid / {{ count_total }} total rows.</div>
+          <div>Fix errors below and re-upload, or run again with Dry run.</div>
+        {% else %}
+          <strong>Looks good!</strong>
+          <div>{{ count_ok }} rows ready to import.</div>
+          <div>If you uncheck Dry run and submit again, they will be saved.</div>
+        {% endif %}
+      </div>
 
-    <table border="1" cellpadding="6" style="border-collapse:collapse;">
-      <thead>
-        <tr>
-          <th>#</th><th>entry_time</th><th>symbol</th><th>side</th>
-          <th>qty</th><th>price</th><th>exit_price</th><th>exit_time</th><th>notes</th><th>errors</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in preview %}
-          <tr>
-            <td>{{ p.line }}</td>
-            <td>{{ p.data.entry_time }}</td>
-            <td>{{ p.data.symbol }}</td>
-            <td>{{ p.data.side }}</td>
-            <td>{{ p.data.quantity }}</td>
-            <td>{{ p.data.price }}</td>
-            <td>{{ p.data.exit_price }}</td>
-            <td>{{ p.data.exit_time }}</td>
-            <td>{{ p.data.notes|default:"" }}</td>
-            <td>
-              {% if p.errors %}
-                <ul style="color:#b00020;">
-                  {% for e in p.errors %}<li>{{ e }}</li>{% endfor %}
-                </ul>
-              {% else %}—{% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    {% if not has_errors %}
-      <form method="post" enctype="multipart/form-data" style="margin-top:1rem;">
-        {% csrf_token %}
-        <input type="hidden" name="dry_run" value="false">
-        {# Re-upload the file to commit; simplest approach for now #}
-        <p><em>Re-select the same file to confirm import:</em></p>
-        <input type="file" name="file" required>
-        <button class="btn btn-success" type="submit">Import Now</button>
-      </form>
-    {% endif %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="mono">Line</th>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th class="mono">Qty</th>
+              <th class="mono">Entry px</th>
+              <th class="mono">Exit px</th>
+              <th>Entry time</th>
+              <th>Exit time</th>
+              <th>Notes</th>
+              <th>Errors</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in preview %}
+              {% with r=row.data e=row.errors %}
+              <tr>
+                <td class="mono">{{ row.line }}</td>
+                <td>{{ r.symbol }}</td>
+                <td>{{ r.side }}</td>
+                <td class="mono">{{ r.quantity }}</td>
+                <td class="mono">{{ r.price }}</td>
+                <td class="mono">{% if r.exit_price %}{{ r.exit_price }}{% else %}—{% endif %}</td>
+                <td>{% if r.entry_time %}{{ r.entry_time|date:"Y-m-d H:i:s" }}{% else %}—{% endif %}</td>
+                <td>{% if r.exit_time %}{{ r.exit_time|date:"Y-m-d H:i:s" }}{% else %}—{% endif %}</td>
+                <td class="clip">{{ r.notes }}</td>
+                <td>
+                  {% if e and e|length %}
+                    <ul style="margin:.3rem 0 .1rem .9rem;">
+                      {% for x in e %}<li>{{ x }}</li>{% endfor %}
+                    </ul>
+                  {% else %}—
+                  {% endif %}
+                </td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   {% endif %}
+</div>
 {% endblock %}

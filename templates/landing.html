@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="home-scope landing">
+
+  <section class="hero">
+    <h1>Track every trade. <span>Improve your edge.</span></h1>
+    <p class="subtle">Fast trade logging, performance stats, CSV import/export, and Google sign-in.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="{% url 'account_signup' %}">Get started — it’s free</a>
+      <a class="btn btn-light" href="{% url 'account_login' %}">I already have an account</a>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="feature">
+      <h3>Journal your trades</h3>
+      <p>Log entries, exits, rationales, and notes with minimal friction.</p>
+    </div>
+    <div class="feature">
+      <h3>Instant insights</h3>
+      <p>See win rate, average PnL, and recent activity at a glance.</p>
+    </div>
+    <div class="feature">
+      <h3>Import / Export</h3>
+      <p>Bring data in via CSV and export anytime for deeper analysis.</p>
+    </div>
+    <div class="feature">
+      <h3>Secure sign-in</h3>
+      <p>Use Google login via django-allauth for quick, safe access.</p>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

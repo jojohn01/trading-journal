@@ -3,13 +3,13 @@ from django.http import JsonResponse, HttpResponse
 from rest_framework import viewsets, permissions
 from .models import Trade, UserTradeSettings
 from .serializers import TradeSerializer
-from .forms import TradeForm, UserTradeSettingsForm, TradesImportForm
+from .forms import TradeForm, UserTradeSettingsForm, TradesImportForm, ProfileForm
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
 from django.core.paginator import Paginator
-from django.db.models import F, Case, When, Value, DecimalField, ExpressionWrapper, Q, Sum, Count, IntegerField
+from django.db.models import F, Case, When, Value, DecimalField, ExpressionWrapper, Q, Sum, Count, IntegerField, Avg
 import csv
 from django.db.models.functions import TruncDate
 import calendar as _cal
@@ -26,12 +26,40 @@ PNL_EXPR = Case(
 EXPECTED = ["entry_time","symbol","side","quantity","price","exit_price","exit_time","notes"]
 
 
+def _dashboard_context(request):
+    closed = Trade.objects.filter(owner=request.user, exit_price__isnull=False)
+    pnl_value = ExpressionWrapper(PNL_EXPR, output_field=DecimalField(max_digits=16, decimal_places=2))
+    closed = closed.annotate(pnl_value=pnl_value)
+
+    agg = closed.aggregate(
+        total_pnl=Sum("pnl_value"),
+        avg_pnl=Avg("pnl_value"),
+        wins=Sum(Case(When(pnl_value__gt=0, then=1), default=0, output_field=IntegerField())),
+    )
+    trade_count = closed.count()
+    wins = agg["wins"] or 0
+    win_rate = (wins / trade_count * 100.0) if trade_count else 0.0
+
+    recent_trades = (
+        closed.order_by("-exit_time")
+              .values("exit_time", "symbol", "side", "quantity", "pnl_value")[:5]
+    )
+    return {
+        "trade_count": trade_count,
+        "total_pnl": agg["total_pnl"] or 0,
+        "avg_pnl": agg["avg_pnl"] or 0,
+        "win_rate": win_rate,
+        "recent_trades": recent_trades,
+        "now": timezone.now(),
+    }
 
 def healthz(_request):
     return JsonResponse({"status": "ok"})
 
 def home(request):
-    return render(request, "home.html")
+    if not request.user.is_authenticated:
+        return render(request, "landing.html", {"now": timezone.now()})
+    return render(request, "dashboard.html", _dashboard_context(request))
 
 def _annotate_pnl(qs):
     buy_expr  = (F("exit_price") - F("price")) * F("quantity")
@@ -168,13 +196,43 @@ def trades_calendar_page(request):
     Hover shows PnL, #trades, wins, win rate. Click a day to jump to filtered list.
     """
     today = timezone.localdate()
+    has_query_month = ("month" in request.GET) or ("year" in request.GET)
+
+    if not has_query_month:
+        # 1) most recent closed trade (by exit_time)
+        latest_exit = (
+            Trade.objects
+            .filter(owner=request.user, exit_time__isnull=False)
+            .order_by("-exit_time")
+            .values_list("exit_time", flat=True)
+            .first()
+        )
+        # 2) else most recent entry_time
+        latest_entry = (
+            None if latest_exit else
+            Trade.objects
+            .filter(owner=request.user)
+            .order_by("-entry_time")
+            .values_list("entry_time", flat=True)
+            .first()
+        )
+
+        dt = latest_exit or latest_entry
+        if dt is not None:
+            dt = timezone.localtime(dt)  # ensure local tz
+            default_year, default_month = dt.year, dt.month
+        else:
+            default_year, default_month = today.year, today.month
+    else:
+        default_year, default_month = today.year, today.month
+
     try:
-        year = int(request.GET.get("year", today.year))
-        month = int(request.GET.get("month", today.month))
+        year = int(request.GET.get("year", default_year))
+        month = int(request.GET.get("month", default_month))
         if not (1 <= month <= 12):
             raise ValueError
     except (TypeError, ValueError):
-        year, month = today.year, today.month
+        year, month = default_year, default_month
 
     start, next_month = _month_bounds(year, month)
 
@@ -233,6 +291,7 @@ def trades_calendar_page(request):
         day_stats[d] = {"pnl": pnl, "trades": trades, "wins": wins, "win_rate": win_rate}
 
     max_abs = max((abs(v["pnl"]) for v in day_stats.values()), default=0.0)
+    month_total_pnl = sum(v["pnl"] for v in day_stats.values())
 
     # Build cells
     grid = []
@@ -281,9 +340,9 @@ def trades_calendar_page(request):
         "legend_max": f"{max_abs:.2f}",
         "prev_link": f"?year={prev_y}&month={prev_m}",
         "next_link": f"?year={next_y}&month={next_m}",
+        "month_total_pnl": month_total_pnl,
     }
     return render(request, "trades/calendar.html", context)
-# Create your views here.
 
 @login_required
 def api_trade_pnl_series(request):
@@ -447,28 +506,44 @@ def trades_delete(request, pk):
 
 @login_required
 def dashboard(request):
-    # Minimal skeleton: a couple of counts for now
-    trades = Trade.objects.filter(owner=request.user)
-    context = {
-        "trade_count": trades.count(),
-        "open_count": trades.filter(exit_time__isnull=True).count(),
-        "closed_count": trades.filter(exit_time__isnull=False).count(),
-        # later: totals, PnL chart data, recent trades, etc.
-    }
-    return render(request, "dashboard.html", context)
+    # Keep this for backward-compatibility; send users to the unified Home.
+    return redirect("home")
+
 
 @login_required
 def profile(request):
     settings_obj, _ = UserTradeSettings.objects.get_or_create(user=request.user)
+
     if request.method == "POST":
-        form = UserTradeSettingsForm(request.POST, instance=settings_obj)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Profile defaults saved.")
+        profile_form = ProfileForm(request.POST, instance=request.user)
+        settings_form = UserTradeSettingsForm(request.POST, instance=settings_obj)
+
+        ok = True
+        if profile_form.is_valid():
+            profile_form.save()
+            messages.success(request, "Account details updated.")
+        else:
+            ok = False
+
+        if settings_form.is_valid():
+            settings_form.save()
+            messages.success(request, "Trading defaults saved.")
+        else:
+            ok = False
+
+        if ok:
             return redirect("profile")
     else:
-        form = UserTradeSettingsForm(instance=settings_obj)
-    return render(request, "profile.html", {"user_obj": request.user, "settings_form": form})
+        profile_form = ProfileForm(instance=request.user)
+        settings_form = UserTradeSettingsForm(instance=settings_obj)
+
+    return render(request, "profile.html", {
+        "profile_form": profile_form,
+        "settings_form": settings_form,
+        "has_password": request.user.has_usable_password(),
+    })
+
+
 
 @login_required
 def trades_list(request):

@@ -1,53 +1,95 @@
-{% extends "base.html" %}
-{% load i18n account socialaccount %}
+{% load static %}
+{% load account socialaccount %}
 
-{% block content %}
-<div class="auth-viewport">
-  <div class="auth-card auth-card--square">
-    <h1 class="auth-title">Welcome back</h1>
-    <p class="subtle">Sign in to your trading journal.</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sign in</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body class="auth-page">
+
+<main class="auth-wrap">
+  <section class="auth-card auth-card--square-ish">
+    <h1 class="auth-title">Sign in</h1>
+    <p class="auth-subtle">Welcome back. Please enter your credentials.</p>
 
     {% if form.non_field_errors %}
-      <div class="errors">Please fix the errors below.</div>
+      <div class="auth-errors">{{ form.non_field_errors }}</div>
     {% endif %}
 
-    <form method="post" action="{% url 'account_login' %}" class="auth-form">
+    <form method="post" class="auth-form" action="{% url 'account_login' %}">
       {% csrf_token %}
+
+      <div class="field">
+        <label class="auth-label" for="{{ form.login.id_for_label }}">
+          {{ form.login.label|default:"Email or Username" }}
+        </label>
+        <input
+          id="{{ form.login.id_for_label }}"
+          name="{{ form.login.html_name }}"
+          type="text"
+          class="auth-input"
+          value="{{ form.login.value|default:'' }}"
+          required
+          autocomplete="username">
+        {% if form.login.errors %}
+          <div class="field-error">{{ form.login.errors|striptags }}</div>
+        {% endif %}
+      </div>
+
+      <div class="field">
+        <label class="auth-label" for="{{ form.password.id_for_label }}">
+          {{ form.password.label|default:"Password" }}
+        </label>
+        <input
+          id="{{ form.password.id_for_label }}"
+          name="{{ form.password.html_name }}"
+          type="password"
+          class="auth-input"
+          required
+          autocomplete="current-password">
+        {% if form.password.errors %}
+          <div class="field-error">{{ form.password.errors|striptags }}</div>
+        {% endif %}
+      </div>
+
+      {% if form.remember %}
+      <div class="field">
+        <label>{{ form.remember }} Remember me</label>
+      </div>
+      {% endif %}
+
+      <div class="auth-actions">
+        <button type="submit" class="btn btn-primary">Sign in</button>
+        <a href="{% url 'account_reset_password' %}" class="btn btn-light">Forgot password?</a>
+      </div>
+
       {% if redirect_field_value %}
         <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
       {% endif %}
-
-      <div class="field">
-        <label for="id_login">Email or Username</label>
-        <input id="id_login" name="login" type="text" autocomplete="username" required>
-        {% if form.login.errors %}<div class="field-error">{{ form.login.errors|striptags }}</div>{% endif %}
-      </div>
-
-      <div class="field">
-        <label for="id_password">Password</label>
-        <input id="id_password" name="password" type="password" autocomplete="current-password" required>
-        {% if form.password.errors %}<div class="field-error">{{ form.password.errors|striptags }}</div>{% endif %}
-      </div>
-
-      <div class="auth-actions">
-        <a class="btn btn-light" href="{% url 'account_reset_password' %}">Forgot password?</a>
-        <button class="btn btn-primary" type="submit">Sign in</button>
-      </div>
     </form>
 
-    <div class="hr"><span>or</span></div>
+    <div class="auth-separator"><span>or</span></div>
 
-    <a class="btn btn-google btn-block" href="{% provider_login_url 'google' process='login' %}">
-      <img alt="" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18">
+    <a class="btn btn-google btn-block" href="{% provider_login_url 'google' %}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.49 30.47 0 24 0 14.64 0 6.48 5.52 2.54 13.53l7.98 6.19C12.24 13.41 17.64 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.5 24.5c0-1.57-.14-3.08-.39-4.5H24v9h12.7c-.55 2.9-2.17 5.37-4.62 7.04l7.15 5.55C43.98 37.3 46.5 31.4 46.5 24.5z"/>
+        <path fill="#FBBC05" d="M10.52 28.29a14.5 14.5 0 0 1 0-8.58l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.53 2.54 10.9l7.98-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.15-5.55c-2 1.35-4.57 2.15-8.76 2.15-6.36 0-11.76-3.91-13.48-9.43l-7.98 6.19C6.48 42.48 14.64 48 24 48z"/>
+      </svg>
       Continue with Google
     </a>
 
     <p class="auth-bottom">
-      New here?
-      <a href="{% url 'account_signup' %}{% if redirect_field_value %}?{{ redirect_field_name }}={{ redirect_field_value|urlencode }}{% endif %}">
-        Create an account
-      </a>
+      Don’t have an account?
+      <a href="{% url 'account_signup' %}">Create one</a>
     </p>
-  </div>
-</div>
-{% endblock %}
+  </section>
+</main>
+
+</body>
+</html>

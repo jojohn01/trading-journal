@@ -1,15 +1,79 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
 {% block content %}
-  <h2>Dashboard</h2>
-  <p>Total trades: {{ trade_count }}</p>
-  <p>Open trades: {{ open_count }}</p>
-  <p>Closed trades: {{ closed_count }}</p>
+<div class="home-scope dashboard">
 
-  <p>
-    <a class="btn btn-primary" href="{% url 'trades_create' %}">New Trade</a>
-    <a class="btn" href="{% url 'trades_list' %}">View All Trades</a>
-    <a class="btn" href="{% url 'trades_calendar' %}">🗓️ Calendar</a>
-  </p>
+  <section class="greeting">
+    <h1>Welcome back, {{ user.first_name|default:user.username }}.</h1>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin:0 0 .75rem;">
+      <p class="subtle" style="margin:0;">Here’s a quick look at your trading journal.</p>
+      <a class="btn btn-light" href="{% url 'trades_charts' %}">Charts</a>
+    </div>
+  </section>
 
-  <!-- Later: chart of PnL, recent trades table, filters, etc. -->
+  <section class="stats-grid">
+    <div class="card">
+      <div class="stat-label">Total trades (closed)</div>
+      <div class="stat-value">{{ trade_count }}</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Win rate</div>
+      <div class="stat-value">{{ win_rate|floatformat:1 }}%</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Total PnL</div>
+      <div class="stat-value">
+        {% if total_pnl >= 0 %}+{% endif %}{{ total_pnl|floatformat:2 }}
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Avg PnL / trade</div>
+      <div class="stat-value">{{ avg_pnl|floatformat:2 }}</div>
+    </div>
+  </section>
+
+  <section class="recent">
+    <div class="card">
+      <div class="card-header">
+        <h2>Recent trades</h2>
+        <a class="btn btn-light" href="/trades/">View all</a>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Exit</th>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th>Qty</th>
+              <th>PnL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in recent_trades %}
+              <tr>
+                <td>{{ t.exit_time|date:"Y-m-d H:i" }}</td>
+                <td>{{ t.symbol }}</td>
+                <td>{{ t.side }}</td>
+                <td>{{ t.quantity }}</td>
+                <td class="{% if t.pnl_value < 0 %}neg{% else %}pos{% endif %}">
+                  {% if t.pnl_value >= 0 %}+{% endif %}{{ t.pnl_value|floatformat:2 }}
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="subtle">No recent closed trades.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>
 {% endblock %}

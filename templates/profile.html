@@ -1,15 +1,57 @@
+{# templates/profile.html #}
 {% extends "base.html" %}
+
 {% block content %}
-  <h2>Profile</h2>
-  <ul>
-    <li>Username: {{ user_obj.username }}</li>
-    <li>Email: {{ user_obj.email|default:"—" }}</li>
-  </ul>
-  <hr>
-  <h3>Trade Defaults</h3>
-  <form method="post">
-    {% csrf_token %}
-    {{ settings_form.as_p }}
-    <button class="btn btn-primary" type="submit">Save</button>
-  </form>
+  <h2 style="margin:0 0 .5rem;">Profile</h2>
+  <p style="color:var(--muted); margin:0 0 1rem;">Update your account info and trading defaults.</p>
+
+  <div style="display:grid; gap:1rem;">
+    <div style="background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:1rem;">
+      <h3 style="margin:0 0 .75rem;">Account</h3>
+      <form method="post" novalidate style="display:grid; gap:.75rem;">
+        {% csrf_token %}
+        {# Render fields manually for nicer layout #}
+        <div style="display:grid; gap:.75rem; grid-template-columns:1fr 1fr;">
+          <div>
+            <label>Username</label>
+            {{ profile_form.username }}
+            {{ profile_form.username.errors }}
+          </div>
+          <div>
+            <label>Email</label>
+            {{ profile_form.email }}
+            {{ profile_form.email.errors }}
+          </div>
+          <div>
+            <label>First name</label>
+            {{ profile_form.first_name }}
+            {{ profile_form.first_name.errors }}
+          </div>
+          <div>
+            <label>Last name</label>
+            {{ profile_form.last_name }}
+            {{ profile_form.last_name.errors }}
+          </div>
+        </div>
+
+        <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+          <button class="btn btn-primary" type="submit">Save changes</button>
+          {% if has_password %}
+            <a class="btn" href="{% url 'account_change_password' %}">Change password</a>
+          {% else %}
+            <a class="btn" href="{% url 'account_set_password' %}">Set password</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    <div style="background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:1rem;">
+      <h3 style="margin:0 0 .75rem;">Trading defaults</h3>
+      <form method="post" novalidate style="display:grid; gap:.75rem;">
+        {% csrf_token %}
+        {{ settings_form.as_p }}
+        <button class="btn" type="submit">Save defaults</button>
+      </form>
+    </div>
+  </div>
 {% endblock %}

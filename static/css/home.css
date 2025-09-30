@@ -1,0 +1,144 @@
+/* ========= Trading Journal: Home/Dashboard (scoped) =========
+   This file intentionally avoids global selectors.
+   Everything is nested under `.home-scope` to prevent bleed.
+============================================================== */
+
+/* Utility scope root — inherit site colors if defined */
+.home-scope {
+  color: inherit;
+}
+
+/* Buttons (scoped) */
+.home-scope .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  font-weight: 600;
+  cursor: pointer;
+  /* fallbacks use the dark palette you used on other pages */
+  color: var(--text, #e8eef8);
+  background: transparent;
+}
+.home-scope .btn:hover { filter: brightness(1.05); }
+
+.home-scope .btn-light {
+  background: var(--panel, #111a2b);
+  border-color: var(--border, #1e2a42);
+  color: var(--text, #e8eef8);
+}
+.home-scope .btn-primary {
+  background: var(--accent, #4f8cff);
+  border-color: #3c72cf;
+  color: var(--accent-contrast, #fff);
+}
+
+/* ---- Landing page sections ---- */
+.home-scope.landing .hero {
+  padding: 56px 0;
+  background: radial-gradient(1200px 600px at 15% -10%, rgba(79,140,255,0.15), transparent);
+}
+.home-scope.landing .hero h1 {
+  font-size: 2rem;
+  margin: 0 0 10px;
+}
+.home-scope.landing .hero h1 span {
+  color: var(--accent, #4f8cff);
+}
+.home-scope .subtle {
+  opacity: 0.85;
+  margin: 0 0 16px;
+}
+.home-scope.landing .cta {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Feature grid */
+.home-scope.landing .features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  padding: 24px 0;
+}
+.home-scope .feature {
+  background: var(--panel, #111a2b);
+  border: 1px solid var(--border, #1e2a42);
+  border-radius: 16px;
+  padding: 16px;
+}
+.home-scope .feature h3 {
+  margin: 0 0 6px;
+}
+.home-scope .feature p {
+  margin: 0;
+  color: var(--muted, #9fb2d8);
+}
+
+/* ---- Dashboard sections ---- */
+.home-scope.dashboard .greeting {
+  padding: 20px 0 10px;
+}
+
+/* Stat cards */
+.home-scope.dashboard .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.home-scope .card {
+  background: var(--panel, #111a2b);
+  border: 1px solid var(--border, #1e2a42);
+  border-radius: 16px;
+  padding: 16px;
+}
+.home-scope .stat-label {
+  color: var(--muted, #9fb2d8);
+  font-size: 0.95rem;
+}
+.home-scope .stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+/* Recent trades table */
+.home-scope .recent .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.home-scope .table-wrap {
+  overflow-x: auto;
+}
+.home-scope table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.home-scope th,
+.home-scope td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border, #1e2a42);
+}
+.home-scope td.pos { color: var(--pos, #16a34a); }
+.home-scope td.neg { color: var(--neg, #dc2626); }
+
+/* ---- Responsive tweaks ---- */
+@media (max-width: 900px) {
+  .home-scope.landing .features { grid-template-columns: repeat(2, 1fr); }
+  .home-scope.dashboard .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+  .home-scope.landing .features { grid-template-columns: 1fr; }
+  .home-scope.dashboard .stats-grid { grid-template-columns: 1fr; }
+  .home-scope.landing .hero { padding: 40px 0; }
+  .home-scope.landing .hero h1 { font-size: 1.7rem; }
+}

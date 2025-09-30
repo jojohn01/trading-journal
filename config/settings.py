@@ -145,6 +145,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+STATICFILES_DIRS = [BASE_DIR / 'static']
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -186,6 +188,7 @@ ACCOUNT_PRESERVE_USERNAME_CASING = False
 
 SOCIALACCOUNT_EMAIL_REQUIRED = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_LOGIN_ON_GET = True
 
 # Dev email: prints messages (activation links) to the server console
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
