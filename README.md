@@ -24,28 +24,28 @@ Built with **Django**, **PostgreSQL**, and **Docker**, this project provides a p
 ![Home Page](docs/screenshots/home.png)
 
 ### Login
-![Login Page](docs//screenshots/login.png)
+![Login Page](docs/screenshots/login.png)
 
 ### Signup
-![Signup Page](docs//screenshots/signup.png)
+![Signup Page](docs/screenshots/signup.png)
 
 ### Trades List
-![Trades List](docs//screenshots/trades.png)
+![Trades List](docs/screenshots/trades.png)
 
 ### New Trade
-![New Trade](docs//screenshots/new_trade.png)
+![New Trade](docs/screenshots/new_trade.png)
 
 ### Charts
-![Charts](docs//screenshots/charts.png)
-
-### Calendar
-![Calendar](docs//screenshots/calendar.png)
+![Charts](docs/screenshots/charts.png)
 
 ### Profile
-![Profile](docs//screenshots/profile.png)
+![Profile](docs/screenshots/profile.png)
+
+### Calendar (GIF demo)
+![Calendar](docs/screenshots/calendar_demo.gif)
 
 ### PnL Chart (GIF demo)
-![PnL Chart Demo](docs//screenshots/pnl_chart_demo.gif)
+![PnL Chart Demo](docs/screenshots/pnl_chart_demo.gif)
 
 ---
 
