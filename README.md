@@ -20,18 +20,32 @@ Built with **Django**, **PostgreSQL**, and **Docker**, this project provides a p
 
 ## Screenshots
 
-### Dashboard  
-![Dashboard](https://placehold.co/800x400?text=Dashboard+Screenshot)
+### Home
+![Home Page](docs/screenshots/home.png)
 
-### Trade List  
-![Trade List](https://placehold.co/800x400?text=Trade+List+Screenshot)
+### Login
+![Login Page](docs//screenshots/login.png)
 
-### Calendar View  
-![Calendar](https://placehold.co/800x400?text=Calendar+Screenshot)
+### Signup
+![Signup Page](docs//screenshots/signup.png)
 
-### Authentication  
-![Login](https://placehold.co/400x400?text=Login+Page)  
-![Signup](https://placehold.co/400x400?text=Signup+Page)
+### Trades List
+![Trades List](docs//screenshots/trades.png)
+
+### New Trade
+![New Trade](docs//screenshots/new_trade.png)
+
+### Charts
+![Charts](docs//screenshots/charts.png)
+
+### Calendar
+![Calendar](docs//screenshots/calendar.png)
+
+### Profile
+![Profile](docs//screenshots/profile.png)
+
+### PnL Chart (GIF demo)
+![PnL Chart Demo](docs//screenshots/pnl_chart_demo.gif)
 
 ---
 
@@ -94,5 +108,7 @@ trading-journal/
 - [ ] Deploy demo instance (Heroku/Railway/Fly.io)
 
 ---
+
+## License
 
 This project is licensed under the [MIT License](LICENSE).
