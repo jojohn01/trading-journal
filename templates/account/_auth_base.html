@@ -1,0 +1,17 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block auth_title %}Account{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body class="auth-page">
+  <main class="auth-wrap">
+    <section class="auth-card auth-card--square-ish">
+      {% block auth_body %}{% endblock %}
+    </section>
+  </main>
+</body>
+</html>
